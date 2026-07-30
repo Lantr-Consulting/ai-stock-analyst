@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { askAnalyst } from "@/lib/api";
 import { dateTime } from "@/lib/format";
-import { cannedReply, chatThread } from "@/lib/mock";
+import { chatThread } from "@/lib/mock";
 import type { ChatMessage } from "@/lib/types";
 
 const SUGGESTED = [
@@ -12,20 +13,43 @@ const SUGGESTED = [
   "What have you done this week?",
 ];
 
+const OFFLINE_REPLY =
+  "I can't reach my backend right now, so I can't answer from my decision records. Start the backend (backend/ on port 8000) or check NEXT_PUBLIC_API_URL, then ask me again.";
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>(chatThread);
   const [draft, setDraft] = useState("");
+  const [thinking, setThinking] = useState(false);
 
-  function send(text: string) {
+  async function send(text: string) {
     const t = text.trim();
-    if (!t) return;
-    const now = new Date().toISOString();
+    if (!t || thinking) return;
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      text: t,
+      at: new Date().toISOString(),
+    };
+    const thread = [...messages, userMsg];
+    setMessages(thread);
+    setDraft("");
+    setThinking(true);
+    let reply: string;
+    try {
+      reply = await askAnalyst(thread);
+    } catch {
+      reply = OFFLINE_REPLY;
+    }
     setMessages((m) => [
       ...m,
-      { id: `u-${m.length}`, role: "user", text: t, at: now },
-      { id: `a-${m.length}`, role: "agent", text: cannedReply, at: now },
+      {
+        id: `a-${Date.now()}`,
+        role: "agent",
+        text: reply,
+        at: new Date().toISOString(),
+      },
     ]);
-    setDraft("");
+    setThinking(false);
   }
 
   return (
@@ -47,7 +71,7 @@ export default function ChatPage() {
             className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 m.role === "user"
                   ? "bg-series-1 text-white"
                   : "border border-hairline bg-surface text-ink"
@@ -61,6 +85,14 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
+        {thinking && (
+          <div className="flex items-center gap-1.5 rounded-2xl border border-hairline bg-surface px-4 py-3 text-sm text-ink-muted self-start">
+            <span className="size-1.5 animate-pulse rounded-full bg-ink-muted" />
+            <span className="size-1.5 animate-pulse rounded-full bg-ink-muted [animation-delay:150ms]" />
+            <span className="size-1.5 animate-pulse rounded-full bg-ink-muted [animation-delay:300ms]" />
+            <span className="ml-1">Reading the records…</span>
+          </div>
+        )}
       </div>
 
       <div className="mt-auto">
@@ -69,7 +101,8 @@ export default function ChatPage() {
             <button
               key={s}
               onClick={() => send(s)}
-              className="rounded-full border border-hairline bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+              disabled={thinking}
+              className="rounded-full border border-hairline bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-ink/[0.04] disabled:opacity-50 dark:hover:bg-white/5"
             >
               {s}
             </button>
@@ -90,14 +123,15 @@ export default function ChatPage() {
           />
           <button
             type="submit"
-            className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            disabled={thinking}
+            className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             Send
           </button>
         </form>
         <p className="mt-2 text-xs text-ink-muted">
-          Sample conversation — live answers arrive with the backend in
-          Milestone 3.
+          Answers are grounded in the sample account records; your live records
+          arrive with the database in Milestone 5.
         </p>
       </div>
     </div>

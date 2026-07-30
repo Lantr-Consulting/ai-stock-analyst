@@ -1,12 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import { interpretProfile } from "@/lib/api";
 import { Card } from "@/components/ui";
-import { profile, strategy } from "@/lib/mock";
+import { profile as initialProfile, strategy as initialStrategy } from "@/lib/mock";
+import type { InvestorProfile, Strategy } from "@/lib/types";
 
 export default function SetupPage() {
   const [instructions, setInstructions] = useState("");
+  const [profile, setProfile] = useState<InvestorProfile>(initialProfile);
+  const [strategy, setStrategy] = useState<Strategy>(initialStrategy);
+  const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [updated, setUpdated] = useState(false);
+
+  async function update() {
+    const t = instructions.trim();
+    if (!t) {
+      setNote(
+        "Type an instruction first — for example, a sector you like or a company to avoid."
+      );
+      return;
+    }
+    setBusy(true);
+    setNote(null);
+    try {
+      const result = await interpretProfile(t, { profile, strategy });
+      const now = new Date().toISOString();
+      setProfile((p) => ({
+        ...p,
+        ...result.profile,
+        version: p.version + 1,
+        updatedAt: now,
+        rawInstructions: [...p.rawInstructions, t],
+      }));
+      setStrategy((s) => ({
+        ...s,
+        ...result.strategy,
+        version: s.version + 1,
+        updatedAt: now,
+      }));
+      setInstructions("");
+      setUpdated(true);
+      setNote(
+        "Profile updated — review how the agent interpreted you below. (Saved profiles arrive with the database in Milestone 5.)"
+      );
+    } catch {
+      setNote(
+        "Couldn't reach the analyst backend — start backend/ on port 8000 or check NEXT_PUBLIC_API_URL, then try again."
+      );
+    }
+    setBusy(false);
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -27,29 +72,23 @@ export default function SetupPage() {
           placeholder={`e.g. "I like large technology companies, I'm comfortable with moderate risk, and I think AI infrastructure will continue growing."`}
           className="w-full resize-none rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
         />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-ink-muted">
-            Sample mode — instructions will update the profile once the backend
-            ships in Milestone 3.
-          </p>
+        <div className="mt-3 flex items-center justify-end">
           <button
-            onClick={() => {
-              setNote(
-                instructions.trim()
-                  ? "Saved as a note. In the full version, the agent re-reads your profile and shows you an updated strategy preview."
-                  : "Type an instruction first — for example, a sector you like or a company to avoid."
-              );
-            }}
-            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90"
+            onClick={update}
+            disabled={busy}
+            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            Update profile
+            {busy ? "Interpreting…" : "Update profile"}
           </button>
         </div>
         {note && <p className="mt-2 text-xs text-ink-2">{note}</p>}
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card title={`Investor profile · v${profile.version}`}>
+        <Card
+          title={`Investor profile · v${profile.version}`}
+          className={updated ? "ring-1 ring-series-1/40" : ""}
+        >
           <dl className="flex flex-col gap-3 text-sm">
             <Row label="Goals" value={profile.goals} />
             <Row
@@ -65,10 +104,7 @@ export default function SetupPage() {
               value={profile.preferredSectors.join(" · ")}
             />
             <Row label="Avoids" value={profile.avoid.join(" · ")} />
-            <Row
-              label="Trading frequency"
-              value={profile.tradingFrequency}
-            />
+            <Row label="Trading frequency" value={profile.tradingFrequency} />
           </dl>
           <div className="mt-4 border-t border-hairline pt-3">
             <div className="text-xs font-medium text-ink-muted">
@@ -84,7 +120,10 @@ export default function SetupPage() {
           </div>
         </Card>
 
-        <Card title={`Strategy preview · v${strategy.version}`}>
+        <Card
+          title={`Strategy preview · v${strategy.version}`}
+          className={updated ? "ring-1 ring-series-1/40" : ""}
+        >
           <p className="text-sm leading-relaxed text-ink-2">
             {strategy.summary}
           </p>
