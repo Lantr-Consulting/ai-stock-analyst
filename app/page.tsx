@@ -1,65 +1,130 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Allocation } from "@/components/allocation";
+import { Card, StatTile, StatusBadge } from "@/components/ui";
+import { ValueChart } from "@/components/value-chart";
+import { dateTime, usd } from "@/lib/format";
+import { decisions, portfolio, valueHistory, weeklySummary } from "@/lib/mock";
 
-export default function Home() {
+export default function Dashboard() {
+  const invested = portfolio.positions.reduce(
+    (s, p) => s + p.shares * p.price,
+    0
+  );
+  const cost = portfolio.positions.reduce(
+    (s, p) => s + p.shares * p.costBasis,
+    0
+  );
+  const total = invested + portfolio.cash;
+  const gain = invested - cost;
+  const gainPct = (gain / cost) * 100;
+  const start = valueHistory[0].value;
+  const totalReturnPct = ((total - start) / start) * 100;
+  const pending = decisions.filter((d) => d.status === "proposed");
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Portfolio</h1>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            Paper account · as of {dateTime(portfolio.asOf)}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        {pending.length > 0 && (
+          <Link
+            href="/proposals"
+            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            {pending.length} trade{pending.length > 1 ? "s" : ""} awaiting
+            approval
+          </Link>
+        )}
+      </header>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile
+          label="Total value (simulated)"
+          value={usd(total)}
+          delta={`${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}% since start`}
+          deltaGood={totalReturnPct >= 0}
+        />
+        <StatTile label="Cash" value={usd(portfolio.cash)} />
+        <StatTile
+          label="Unrealized gain"
+          value={usd(gain)}
+          delta={`${gainPct >= 0 ? "+" : ""}${gainPct.toFixed(1)}% on invested`}
+          deltaGood={gain >= 0}
+        />
+        <StatTile
+          label="Positions"
+          value={String(portfolio.positions.length)}
+        />
+      </div>
+
+      <Card title="Portfolio value">
+        <ValueChart points={valueHistory} />
+      </Card>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card title="Allocation">
+          <Allocation snapshot={portfolio} />
+        </Card>
+
+        <Card
+          title="Recent decisions"
+          action={
+            <Link
+              href="/activity"
+              className="text-xs font-medium text-series-1 hover:underline"
+            >
+              View all activity
+            </Link>
+          }
+        >
+          <ul className="flex flex-col gap-3">
+            {decisions.slice(0, 4).map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">
+                    {d.action === "hold"
+                      ? "Hold — no action"
+                      : `${d.action === "buy" ? "Buy" : "Sell"} ${d.qty} ${d.symbol}`}
+                    {d.estValue ? (
+                      <span className="text-ink-muted"> · ~{usd(d.estValue)}</span>
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-ink-muted">
+                    {dateTime(d.createdAt)}
+                  </div>
+                </div>
+                <StatusBadge status={d.status} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+
+      <Card title={`Weekly summary — ${weeklySummary.period}`}>
+        <p className="text-sm leading-relaxed text-ink-2">{weeklySummary.text}</p>
+      </Card>
+
+      <table className="sr-only">
+        <caption>Portfolio value history</caption>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {valueHistory.map((p) => (
+            <tr key={p.date}>
+              <td>{p.date}</td>
+              <td>{usd(p.value)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
