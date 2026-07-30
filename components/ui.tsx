@@ -3,7 +3,7 @@ import type { DecisionStatus, SafeguardCheck } from "@/lib/types";
 
 export function SimulatedBanner() {
   return (
-    <div className="flex items-center gap-2 border-b border-hairline bg-surface px-5 py-2 text-xs text-ink-2">
+    <div className="flex items-center gap-2 border-b border-hairline bg-warning/[0.08] px-5 py-2 text-xs text-ink-2">
       <span aria-hidden className="inline-block size-2 rounded-full bg-warning" />
       <span>
         <strong className="font-semibold text-ink">Simulated</strong> — this is a
@@ -27,7 +27,7 @@ export function Card({
 }) {
   return (
     <section
-      className={`rounded-xl border border-hairline bg-surface p-5 ${className}`}
+      className={`rounded-xl border border-hairline bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none ${className}`}
     >
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -54,9 +54,14 @@ export function StatTile({
   deltaGood?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-hairline bg-surface p-4">
+    <div className="rounded-xl border border-hairline bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none">
       <div className="text-xs text-ink-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight">{value}</div>
+      <div
+        className="mt-1 text-2xl font-semibold tracking-tight"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {value}
+      </div>
       {delta && (
         <div
           className={`mt-0.5 text-xs font-medium ${

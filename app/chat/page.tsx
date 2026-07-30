@@ -29,7 +29,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-5">
+    <div className="flex flex-1 flex-col gap-5">
       <header>
         <h1 className="text-xl font-semibold tracking-tight">
           Ask the analyst

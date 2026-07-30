@@ -41,13 +41,32 @@ export default function Dashboard() {
         )}
       </header>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile
-          label="Total value (simulated)"
-          value={usd(total)}
-          delta={`${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}% since start`}
-          deltaGood={totalReturnPct >= 0}
-        />
+      <Card>
+        <div className="mb-4">
+          <div className="text-xs text-ink-muted">
+            Total portfolio value (simulated)
+          </div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
+            <span
+              className="text-4xl font-semibold tracking-tight"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {usd(total)}
+            </span>
+            <span
+              className={`text-sm font-medium ${
+                totalReturnPct >= 0 ? "text-delta-up" : "text-delta-down"
+              }`}
+            >
+              {totalReturnPct >= 0 ? "↑" : "↓"}{" "}
+              {Math.abs(totalReturnPct).toFixed(1)}% since start
+            </span>
+          </div>
+        </div>
+        <ValueChart points={valueHistory} />
+      </Card>
+
+      <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
         <StatTile label="Cash" value={usd(portfolio.cash)} />
         <StatTile
           label="Unrealized gain"
@@ -60,10 +79,6 @@ export default function Dashboard() {
           value={String(portfolio.positions.length)}
         />
       </div>
-
-      <Card title="Portfolio value">
-        <ValueChart points={valueHistory} />
-      </Card>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title="Allocation">

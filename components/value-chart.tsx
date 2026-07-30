@@ -99,6 +99,16 @@ export function ValueChart({ points }: { points: ValuePoint[] }) {
             {shortDate(points[i].date)}
           </text>
         ))}
+        <defs>
+          <linearGradient id="value-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--series-1)" stopOpacity={0.14} />
+            <stop offset="100%" stopColor="var(--series-1)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <path
+          d={`${path}L${xs[xs.length - 1]},${H - PAD.bottom}L${xs[0]},${H - PAD.bottom}Z`}
+          fill="url(#value-fill)"
+        />
         <path
           d={path}
           fill="none"
@@ -107,6 +117,29 @@ export function ValueChart({ points }: { points: ValuePoint[] }) {
           strokeLinejoin="round"
           strokeLinecap="round"
         />
+        {h === null && (
+          <g>
+            <circle
+              cx={xs[xs.length - 1]}
+              cy={ys[ys.length - 1]}
+              r={4}
+              fill="var(--series-1)"
+              stroke="var(--surface)"
+              strokeWidth={2}
+            />
+            <text
+              x={xs[xs.length - 1] - 8}
+              y={ys[ys.length - 1] - 10}
+              textAnchor="end"
+              fontSize={11.5}
+              fontWeight={600}
+              fill="var(--ink)"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {usd(points[points.length - 1].value, { cents: false })}
+            </text>
+          </g>
+        )}
         {h !== null && (
           <g>
             <line
