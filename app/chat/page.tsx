@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import type { Decision } from "@/lib/types";
 import { OrderCard } from "@/components/order-card";
+import { updateSettings } from "@/lib/api";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
@@ -39,6 +40,7 @@ export default function ChatPage() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [pending, setPending] = useState<Decision[]>([]);
   const [recent, setRecent] = useState<Decision[]>([]);
+  const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null);
   const [activeRun, setActiveRun] = useState<ResearchRun | null>(null);
   const [, setTick] = useState(0);
   const toast = useToast();
@@ -369,6 +371,74 @@ export default function ChatPage() {
           </div>
         )}
       </div>
+
+      {(() => {
+        const LABELS: Record<string, string> = {
+          maxOrderPct: "Max single order",
+          maxPositionPct: "Max position size",
+          minCashPct: "Minimum cash",
+          maxTradesPerDay: "Max trades per day",
+        };
+        const rec = recent.find(
+          (d) => !d.symbol && d.feedback?.startsWith('{"suggest"')
+        );
+        if (!rec || rec.id === dismissedSuggestion) return null;
+        let parsed: { suggest: Record<string, number>; why: string };
+        try {
+          parsed = JSON.parse(rec.feedback!);
+        } catch {
+          return null;
+        }
+        const entries = Object.entries(parsed.suggest);
+        if (entries.length === 0) return null;
+        return (
+          <div className="shrink-0 rounded-2xl border border-accent/40 bg-surface px-5 py-4">
+            <div className="text-sm font-bold">
+              Your analyst suggests loosening a safeguard
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-ink-2">
+              Some researched trades didn&apos;t fit your current limits:{" "}
+              {parsed.why}
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {entries.map(([k, v]) => (
+                <li
+                  key={k}
+                  className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent"
+                >
+                  {LABELS[k] ?? k}: {v}
+                  {k === "maxTradesPerDay" ? "/day" : "%"}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    await updateSettings({ safeguards: parsed.suggest });
+                    setDismissedSuggestion(rec.id);
+                    toast(
+                      "success",
+                      "Safeguards updated — run research again and the analyst will re-propose at the new limits."
+                    );
+                  } catch {
+                    toast("error", "Couldn't update safeguards — try again.");
+                  }
+                }}
+                className="btn-primary px-4 py-2 text-sm"
+              >
+                Apply changes
+              </button>
+              <button
+                onClick={() => setDismissedSuggestion(rec.id)}
+                className="btn-ghost px-4 py-2 text-sm"
+              >
+                Keep my limits
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {activeRun && (
         <div className="shrink-0 rounded-2xl bg-surface px-5 py-3.5">

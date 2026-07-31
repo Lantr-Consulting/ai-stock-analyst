@@ -284,6 +284,7 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
         equity = account["equity"]
         proposed_count = 0
         skipped: list[str] = []
+        need: dict[str, int] = {}
         for o in orders:
             symbol = str(o["symbol"]).upper(); qty = int(o["qty"])
             action = "sell" if o.get("action") == "sell" else "buy"
@@ -302,7 +303,21 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                     account["cash"] - safeguards["minCashPct"] / 100 * equity,     # cash floor
                 ]
                 qty = min(qty, int(min(fits) // price))
+            def _note_needs(oq: int) -> None:
+                ov = oq * price
+                pct_order = ov / equity * 100
+                if pct_order > safeguards["maxOrderPct"]:
+                    need["maxOrderPct"] = max(need.get("maxOrderPct", 0), min(25, int(pct_order + 1)))
+                pos_pct = (held_val.get(symbol, 0.0) + ov) / equity * 100
+                is_core = symbol in safeguards.get("coreSymbols", [])
+                if not is_core and pos_pct > safeguards["maxPositionPct"]:
+                    need["maxPositionPct"] = max(need.get("maxPositionPct", 0), min(40, int(pos_pct + 1)))
+                cash_after = (account["cash"] - ov) / equity * 100
+                if cash_after < safeguards["minCashPct"]:
+                    need["minCashPct"] = min(need.get("minCashPct", 100), max(2, int(cash_after)))
+
             if qty < 1:
+                _note_needs(orig_qty)
                 skipped.append(f"{action} {symbol} (no room inside your limits)")
                 continue
             checks = risk.run_safeguards(action=action, symbol=symbol, qty=qty, price=price,
@@ -311,6 +326,9 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 asset_check=broker.asset_ok(symbol, keys))
             if not risk.passed(checks):
                 fails = [c["name"] for c in checks if c["status"] == "fail"]
+                if "Trade frequency" in fails:
+                    need["maxTradesPerDay"] = min(10, trades_today + len(orders))
+                _note_needs(orig_qty)
                 skipped.append(f"{action} {qty} {symbol} ({', '.join(fails)})")
                 continue
             proposed_count += 1; pending.add(symbol)
@@ -322,11 +340,17 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 "strategyVersion": row["strategy_version"], "evidence": [],
                 "safeguards": checks, "status": "proposed", "runId": run_id})
         if skipped:
+            patch: dict[str, Any] = {
+                "rationale": plan_record["rationale"]
+                + "\n\nNot proposed (outside your safeguards): "
+                + "; ".join(skipped)
+            }
+            if need:
+                patch["feedback"] = json.dumps(
+                    {"suggest": need, "why": "; ".join(skipped)[:400]}
+                )
             db._rest("PATCH", "decisions",
-                     params={"id": f"eq.{plan_record['id']}"},
-                     json={"rationale": plan_record["rationale"]
-                           + "\n\nNot proposed (outside your safeguards): "
-                           + "; ".join(skipped)})
+                     params={"id": f"eq.{plan_record['id']}"}, json=patch)
         summary = rationale or "Run complete — no findings this time."
         if orders:
             summary += "\n\nProposed: " + ", ".join(
