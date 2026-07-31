@@ -70,39 +70,57 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
     @tool
     def get_portfolio() -> str:
         """Current paper account: cash, equity, and open positions."""
-        return json.dumps(broker.account_snapshot(keys))
+        try:
+            return json.dumps(broker.account_snapshot(keys))
+        except Exception as e:
+            return json.dumps({"error": str(e)[:200]})
 
     @tool
     def get_latest_prices(symbols: str) -> str:
         """Latest trade prices. Pass comma-separated symbols, e.g. 'AAPL,MSFT'."""
-        return json.dumps(
-            broker.latest_prices([s.strip() for s in symbols.split(",")], keys)
-        )
+        try:
+            return json.dumps(
+                broker.latest_prices([s.strip() for s in symbols.split(",")], keys)
+            )
+        except Exception as e:
+            return json.dumps({"error": f"{e}"[:200] + " — check the ticker symbol and retry"})
 
     @tool
     def get_daily_bars(symbol: str, days: int = 30) -> str:
         """Recent daily OHLCV bars for one symbol (default 30 days)."""
-        return json.dumps(broker.daily_bars(symbol, days, keys))
+        try:
+            return json.dumps(broker.daily_bars(symbol, days, keys))
+        except Exception as e:
+            return json.dumps({"error": f"{e}"[:200]})
 
     @tool
     def get_recent_news(symbols: str, limit: int = 8) -> str:
         """Recent market news. Pass comma-separated symbols."""
-        return json.dumps(
-            broker.recent_news([s.strip() for s in symbols.split(",")], limit, keys)
-        )
+        try:
+            return json.dumps(
+                broker.recent_news([s.strip() for s in symbols.split(",")], limit, keys)
+            )
+        except Exception as e:
+            return json.dumps({"error": f"{e}"[:200]})
 
     @tool
     def get_market_movers() -> str:
         """Today's top gainers, losers, and most-active US stocks —
         for discovering candidates beyond the watchlist."""
-        return json.dumps(broker.market_movers(keys))
+        try:
+            return json.dumps(broker.market_movers(keys))
+        except Exception as e:
+            return json.dumps({"error": str(e)[:200]})
 
     @tool
     def get_indicators(symbol: str) -> str:
         """Quant indicators for one symbol: price vs SMA20/SMA50 (trend),
         RSI14 (momentum), annualized volatility, 60-day max drawdown,
         30-day return."""
-        return json.dumps(broker.indicators(symbol, keys))
+        try:
+            return json.dumps(broker.indicators(symbol, keys))
+        except Exception as e:
+            return json.dumps({"error": f"{e}"[:200]})
 
     return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news, get_market_movers, get_indicators]
 
