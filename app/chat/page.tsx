@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { askAnalyst, getChatHistory, getThreads, isSignedOut, newThread, type Thread } from "@/lib/api";
+import {
+  approveDecision,
+  askAnalyst,
+  getChatHistory,
+  getDecisions,
+  getThreads,
+  isSignedOut,
+  newThread,
+  rejectDecision,
+  type Thread,
+} from "@/lib/api";
+import type { Decision } from "@/lib/types";
+import { usd } from "@/lib/format";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
 import { useToast } from "@/components/toast";
@@ -22,7 +34,52 @@ export default function ChatPage() {
   const [thinking, setThinking] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [pending, setPending] = useState<Decision[]>([]);
   const toast = useToast();
+
+  // Inline proposals: poll for pending trades and fresh thread messages.
+  useEffect(() => {
+    const load = () => {
+      getDecisions()
+        .then((ds) => setPending(ds.filter((d) => d.status === "proposed")))
+        .catch(() => {});
+    };
+    load();
+    const t = setInterval(() => {
+      load();
+      if (threadId && !thinking) {
+        getChatHistory(threadId)
+          .then((h) => setMessages((prev) => (h.length > prev.length ? h : prev)))
+          .catch(() => {});
+      }
+    }, 10000);
+    return () => clearInterval(t);
+  }, [threadId, thinking]);
+
+  async function resolveInline(d: Decision, action: "approve" | "reject") {
+    setPending((p) => p.filter((x) => x.id !== d.id));
+    toast(
+      "info",
+      action === "approve"
+        ? `Approving ${d.symbol} — submitting to your paper account…`
+        : `Rejected ${d.symbol}.`
+    );
+    try {
+      const updated =
+        action === "approve"
+          ? await approveDecision(d.id)
+          : await rejectDecision(d.id);
+      if (action === "approve")
+        toast(
+          updated.status === "blocked" ? "error" : "success",
+          updated.status === "blocked"
+            ? `${d.symbol} blocked — conditions changed; see Proposals for the checks.`
+            : `${d.symbol} order ${updated.order?.status ?? "accepted"} by Alpaca.`
+        );
+    } catch {
+      toast("error", `Couldn't ${action} ${d.symbol} — see the Proposals page.`);
+    }
+  }
 
   useEffect(() => {
     getThreads()
@@ -215,6 +272,46 @@ export default function ChatPage() {
           </div>
         )}
       </div>
+
+      {pending.length > 0 && (
+        <div className="shrink-0 border-t border-hairline pt-3">
+          <div className="mb-2 text-xs font-medium text-ink-muted">
+            Trades awaiting your approval
+          </div>
+          <div className="flex flex-col gap-2">
+            {pending.map((d) => (
+              <div
+                key={d.id}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-hairline bg-surface px-3.5 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-medium">
+                    {d.action === "buy" ? "Buy" : "Sell"} {d.qty} {d.symbol}
+                    {d.estValue ? (
+                      <span className="text-ink-muted"> · ~{usd(d.estValue)}</span>
+                    ) : null}
+                  </span>
+                  <p className="line-clamp-1 text-xs text-ink-2">{d.rationale}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => resolveInline(d, "approve")}
+                    className="rounded-lg bg-series-1 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => resolveInline(d, "reject")}
+                    className="rounded-lg border border-hairline px-3 py-1.5 text-sm text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-auto shrink-0 pt-2">
         <div className="mb-2 flex flex-wrap gap-1.5">

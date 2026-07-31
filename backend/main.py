@@ -280,7 +280,7 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 "strategyVersion": row["strategy_version"], "evidence": [],
                 "safeguards": checks, "status": "proposed" if ok else "blocked", "runId": run_id})
         if automation:
-            thread_id = db.thread_for_title(user["id"], automation["title"])
+            thread_id = automation.get("thread_id") or db.thread_for_title(user["id"], automation["title"])
             summary = rationale or "Run complete — no findings this time."
             if orders:
                 summary += "\n\nProposed: " + ", ".join(
@@ -659,6 +659,7 @@ ACCOUNT STATE:
 
 
 CHAT_TOOLS = [
+    {"type": "function", "function": {"name": "start_research", "description": "Launch a live research run for the user: scans their portfolio, watchlist, market movers, news, and indicators, then proposes safeguard-checked trades (or a report). Use when the user asks you to research, dig into something, or propose trades. The mission describes what to focus on.", "parameters": {"type": "object", "properties": {"mission": {"type": "string", "description": "What this run should focus on, in plain English."}}, "required": ["mission"]}}},
     {"type": "function", "function": {"name": "lookup_asset", "description": "Verify whether a symbol is a real, tradable US listing and get its latest price.", "parameters": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}}},
     {"type": "function", "function": {"name": "get_latest_prices", "description": "Latest trade prices for comma-separated symbols.", "parameters": {"type": "object", "properties": {"symbols": {"type": "string"}}, "required": ["symbols"]}}},
     {"type": "function", "function": {"name": "get_indicators", "description": "Quant indicators for one symbol: price vs SMA20/50, RSI14, volatility, drawdown, 30-day return.", "parameters": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}}},
@@ -666,8 +667,26 @@ CHAT_TOOLS = [
 ]
 
 
-def _chat_tool(name: str, args: dict, keys) -> str:
+def _chat_tool(name: str, args: dict, keys, user=None, row=None, thread_id=None) -> str:
     try:
+        if name == "start_research":
+            if user is None or row is None:
+                return json.dumps({"error": "unavailable"})
+            if not row["activated"] or row["paused"]:
+                return json.dumps({"error": "agent is inactive or paused — activate/resume it first"})
+            if user["id"] in _research_in_flight:
+                return json.dumps({"error": "a research run is already in progress"})
+            run = db.create_run(user["id"])
+            _research_in_flight.add(user["id"])
+            threading.Thread(
+                target=_do_research,
+                args=(user, row, run["id"],
+                      {"title": "Research", "prompt": str(args.get("mission", ""))[:1500],
+                       "thread_id": thread_id}),
+                daemon=True,
+            ).start()
+            return json.dumps({"ok": True, "runId": run["id"],
+                               "note": "Research started — it takes about a minute; the findings will be posted into this conversation and any trades appear as proposals here."})
         if name == "lookup_asset":
             sym = str(args["symbol"]).upper()
             ok, detail = broker.asset_ok(sym, keys)
@@ -715,6 +734,11 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
         "decisions": [slim(r) for r in db.list_decisions(user["id"], limit=10)],
     }
 
+    thread_id = req.threadId
+    if not thread_id:
+        threads_list = db.list_threads(user["id"])
+        thread_id = threads_list[0]["id"] if threads_list else db.create_thread(user["id"])["id"]
+
     history = [
         {"role": "user" if m.role == "user" else "assistant", "content": m.text}
         for m in req.messages[-12:]
@@ -740,7 +764,7 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
                 except Exception:
                     targs = {}
                 msgs.append({"role": "tool", "tool_call_id": t.id,
-                             "content": _chat_tool(t.function.name, targs, keys)})
+                             "content": _chat_tool(t.function.name, targs, keys, user, row, thread_id)})
             continue
         text = msg.content or ""
         break
@@ -755,10 +779,6 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
                 text += "\n\n(I've updated your strategy to reflect this.)"
             except Exception:
                 pass
-    thread_id = req.threadId
-    if not thread_id:
-        threads = db.list_threads(user["id"])
-        thread_id = threads[0]["id"] if threads else db.create_thread(user["id"])["id"]
     if len(req.messages) == 1:
         db.rename_thread(user["id"], thread_id, req.messages[-1].text[:60])
     db.add_message(user["id"], "user", req.messages[-1].text, thread_id)
