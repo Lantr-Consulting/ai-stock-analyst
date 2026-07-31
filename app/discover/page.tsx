@@ -101,6 +101,8 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [canWatch, setCanWatch] = useState(false);
+  const [tf, setTf] = useState<"1W" | "1M" | "3M">("1M");
+  const [buyQty, setBuyQty] = useState(10);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const toast = useToast();
 
@@ -173,82 +175,151 @@ export default function DiscoverPage() {
       </form>
       {err && <p className="text-sm text-critical">{err}</p>}
 
-      {detail && (
-        <Card className="!p-0 overflow-hidden">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline bg-surface-2 px-5 py-4">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight">
-                {detail.info.symbol}
-                <span className="ml-2 text-sm font-normal text-ink-2">
-                  {detail.info.name}
-                </span>
+      {detail && (() => {
+        const closes = detail.bars.map((b) => b.close);
+        const tfCloses =
+          tf === "1W" ? closes.slice(-5) : tf === "1M" ? closes.slice(-21) : closes;
+        const sym = detail.info.symbol;
+        const est = (ind?.price ?? 0) * buyQty;
+        return (
+          <section className="grid gap-8 lg:grid-cols-[1fr_320px]">
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                {detail.info.name}
               </h2>
-              <p className="mt-0.5 text-[11px] text-ink-muted">
-                {detail.info.exchange}
-                {detail.info.tradable ? " · tradable" : " · not tradable"}
-              </p>
-            </div>
-            {ind?.price != null && (
-              <div className="text-right">
-                <div className="text-3xl font-bold tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {usd(ind.price)}
-                </div>
-                {ind.return30dPct != null && (
+              {ind?.price != null && (
+                <>
                   <div
-                    className={`text-xs font-medium ${ind.return30dPct >= 0 ? "text-delta-up" : "text-delta-down"}`}
+                    className="mt-1 text-5xl font-bold tracking-tight"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
                   >
-                    {ind.return30dPct >= 0 ? "+" : ""}
-                    {ind.return30dPct}% 30d
+                    {usd(ind.price)}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="px-5 py-4">
-            <Spark closes={detail.bars.map((b) => b.close)} className="h-32 w-full" fill id={detail.info.symbol} />
-            {ind && !ind.error && (
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Stat label="Trend" value={trendUp == null ? "—" : trendUp ? "Above SMA20" : "Below SMA20"} tone={trendUp == null ? "" : trendUp ? "text-delta-up" : "text-delta-down"} />
-                <Stat label="RSI 14" value={ind.rsi14 != null ? String(ind.rsi14) : "—"} tone={ind.rsi14 != null && ind.rsi14 < 35 ? "text-delta-up" : ind.rsi14 != null && ind.rsi14 > 70 ? "text-delta-down" : ""} />
-                <Stat label="Volatility" value={ind.annualizedVolPct != null ? `${ind.annualizedVolPct}%` : "—"} />
-                <Stat label="Max drawdown 60d" value={ind.maxDrawdown60dPct != null ? `${ind.maxDrawdown60dPct}%` : "—"} />
-              </div>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/chat" className="btn-primary px-4 py-2 text-sm">
-                Ask the analyst about {detail.info.symbol}
-              </Link>
-              {canWatch && !watchlist.includes(detail.info.symbol) && (
-                <button onClick={() => addToWatchlist(detail.info.symbol)} className="btn-ghost px-4 py-2 text-sm">
-                  + Add to watchlist
-                </button>
+                  {ind.return30dPct != null && (
+                    <div
+                      className={`mt-1.5 text-sm font-semibold ${
+                        ind.return30dPct >= 0 ? "text-delta-up" : "text-delta-down"
+                      }`}
+                    >
+                      {ind.return30dPct >= 0 ? "+" : ""}
+                      {ind.return30dPct}% past 30 days
+                    </div>
+                  )}
+                </>
               )}
-              {watchlist.includes(detail.info.symbol) && (
-                <span className="inline-flex items-center rounded-full bg-series-1/15 px-3 py-1.5 text-xs font-medium text-series-1">
-                  On your watchlist
+              <div className="mt-6">
+                <Spark closes={tfCloses} className="h-64 w-full" fill id={sym} />
+              </div>
+              <div className="mt-3 flex items-center gap-5 border-b border-hairline pb-2 text-xs font-bold">
+                {(["1W", "1M", "3M"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTf(t)}
+                    className={`pb-1 ${
+                      tf === t
+                        ? "border-b-2 border-series-1 text-series-1"
+                        : "text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+                <span className="ml-auto text-[11px] font-normal text-ink-muted">
+                  {sym} · {detail.info.exchange}
+                  {detail.info.tradable ? "" : " · not tradable"}
                 </span>
+              </div>
+
+              {detail.news.length > 0 && (
+                <div className="mt-6">
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-muted">
+                    News
+                  </div>
+                  <ul>
+                    {detail.news.map((n, i) => (
+                      <li
+                        key={i}
+                        className="border-b border-hairline py-3 last:border-0"
+                      >
+                        <div className="text-sm font-medium leading-snug">
+                          {n.headline}
+                        </div>
+                        <div className="mt-1 text-[11px] text-ink-muted">
+                          {n.source} · {dateTime(n.at)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
-            {detail.news.length > 0 && (
-              <div className="mt-4">
-                <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                  Recent news
+
+            <aside className="flex flex-col gap-4 lg:sticky lg:top-0 lg:self-start">
+              <div className="rounded-2xl bg-surface p-5">
+                <h3 className="text-base font-bold tracking-tight">Buy {sym}</h3>
+                <div className="mt-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Shares</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={buyQty}
+                      onChange={(e) =>
+                        setBuyQty(Math.max(1, Math.floor(Number(e.target.value) || 1)))
+                      }
+                      className="w-24 rounded-lg border border-hairline bg-page px-3 py-1.5 text-right text-sm outline-none focus:border-accent"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-series-1">Market price</span>
+                    <span className="font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {ind?.price != null ? usd(ind.price) : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-hairline pt-3">
+                    <span className="text-sm font-bold">Estimated cost</span>
+                    <span className="text-sm font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {usd(est)}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/chat?ask=${encodeURIComponent(
+                      `Evaluate buying ${buyQty} shares of ${sym} (~${usd(est)}). Research it with live data and propose the order if it makes sense.`
+                    )}`}
+                    className="btn-primary w-full px-4 py-3 text-sm"
+                  >
+                    Send to analyst
+                  </Link>
+                  {canWatch && !watchlist.includes(sym) && (
+                    <button onClick={() => addToWatchlist(sym)} className="btn-ghost w-full px-4 py-2.5 text-sm">
+                      + Add to watchlist
+                    </button>
+                  )}
+                  {watchlist.includes(sym) && (
+                    <span className="inline-flex items-center justify-center rounded-full bg-series-1/15 px-3 py-2 text-xs font-medium text-series-1">
+                      On your watchlist
+                    </span>
+                  )}
+                  <p className="text-[11px] leading-relaxed text-ink-muted">
+                    Your analyst researches and safeguard-checks every order
+                    before it can be approved. Simulated paper trading.
+                  </p>
                 </div>
-                <ul className="flex flex-col gap-2">
-                  {detail.news.map((n, i) => (
-                    <li key={i} className="rounded-lg bg-page px-3 py-2">
-                      <div className="text-sm font-medium">{n.headline}</div>
-                      <div className="mt-0.5 text-[11px] text-ink-muted">
-                        {n.source} · {dateTime(n.at)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
               </div>
-            )}
-          </div>
-        </Card>
-      )}
+
+              {ind && !ind.error && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Stat label="Trend" value={trendUp == null ? "—" : trendUp ? "Above SMA20" : "Below SMA20"} tone={trendUp == null ? "" : trendUp ? "text-delta-up" : "text-delta-down"} />
+                  <Stat label="RSI 14" value={ind.rsi14 != null ? String(ind.rsi14) : "—"} tone={ind.rsi14 != null && ind.rsi14 < 35 ? "text-delta-up" : ind.rsi14 != null && ind.rsi14 > 70 ? "text-delta-down" : ""} />
+                  <Stat label="Volatility" value={ind.annualizedVolPct != null ? `${ind.annualizedVolPct}%` : "—"} />
+                  <Stat label="Drawdown 60d" value={ind.maxDrawdown60dPct != null ? `${ind.maxDrawdown60dPct}%` : "—"} />
+                </div>
+              )}
+            </aside>
+          </section>
+        );
+      })()}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {[

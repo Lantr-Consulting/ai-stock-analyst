@@ -122,6 +122,8 @@ export default function ChatPage() {
   }
 
   useEffect(() => {
+    const ask = new URLSearchParams(window.location.search).get("ask");
+    if (ask) setDraft(ask);
     getThreads()
       .then((ts) => {
         setThreads(ts);
