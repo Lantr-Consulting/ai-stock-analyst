@@ -256,6 +256,14 @@ export default function ProposalsPage() {
               movers, and indicators…
             </span>
           </div>
+          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-baseline">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
+              style={{
+                width: `${Math.max(4, Math.min(95, Math.round(((Date.now() - new Date(activeRun.started_at).getTime()) / 1000 / 90) * 100)))}%`,
+              }}
+            />
+          </div>
           <form
             onSubmit={async (e) => {
               e.preventDefault();

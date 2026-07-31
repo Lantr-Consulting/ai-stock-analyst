@@ -6,10 +6,12 @@ import {
   askAnalyst,
   getChatHistory,
   getDecisions,
+  getResearchRuns,
   getThreads,
   isSignedOut,
   newThread,
   rejectDecision,
+  type ResearchRun,
   type Thread,
 } from "@/lib/api";
 import type { Decision } from "@/lib/types";
@@ -37,15 +39,36 @@ export default function ChatPage() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [pending, setPending] = useState<Decision[]>([]);
   const [recent, setRecent] = useState<Decision[]>([]);
+  const [activeRun, setActiveRun] = useState<ResearchRun | null>(null);
+  const [, setTick] = useState(0);
   const toast = useToast();
 
-  // Inline proposals: poll for pending trades and fresh thread messages.
+  // Poll for pending trades, fresh messages, and live research status.
   useEffect(() => {
     const load = () => {
       getDecisions()
         .then((ds) => {
           setPending(ds.filter((d) => d.status === "proposed"));
           setRecent(ds);
+        })
+        .catch(() => {});
+      getResearchRuns()
+        .then((rs) => {
+          const running = rs.find((r) => r.status === "running") ?? null;
+          setActiveRun((prev) => {
+            if (prev && !running) {
+              const done = rs.find((r) => r.id === prev.id);
+              toast(
+                done?.status === "error" ? "error" : "success",
+                done?.status === "error"
+                  ? `Research failed: ${done.error ?? "unknown error"}`
+                  : "Research complete — findings and order tickets are in."
+              );
+              if (threadId)
+                getChatHistory(threadId).then(setMessages).catch(() => {});
+            }
+            return running;
+          });
         })
         .catch(() => {});
     };
@@ -57,9 +80,21 @@ export default function ChatPage() {
           .then((h) => setMessages((prev) => (h.length > prev.length ? h : prev)))
           .catch(() => {});
       }
-    }, 10000);
+    }, 5000);
     return () => clearInterval(t);
-  }, [threadId, thinking]);
+  }, [threadId, thinking, toast]);
+
+  // 1-second tick so the progress bar and timer advance smoothly.
+  useEffect(() => {
+    if (!activeRun) return;
+    const t = setInterval(() => setTick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [activeRun?.id, activeRun]);
+
+  const elapsed = activeRun
+    ? Math.max(0, Math.floor((Date.now() - new Date(activeRun.started_at).getTime()) / 1000))
+    : 0;
+  const progressPct = Math.min(95, Math.round((elapsed / 90) * 100));
 
   async function resolveInline(d: Decision, action: "approve" | "reject", qty?: number) {
     setPending((p) => p.filter((x) => x.id !== d.id));
@@ -322,6 +357,31 @@ export default function ChatPage() {
           </div>
         )}
       </div>
+
+      {activeRun && (
+        <div className="shrink-0 rounded-2xl bg-surface px-5 py-3.5">
+          <div className="flex items-center gap-2 text-sm">
+            <span aria-hidden className="size-2 animate-pulse rounded-full bg-accent" />
+            <span className="font-medium">Research in progress</span>
+            <span
+              className="ml-auto text-xs text-ink-muted"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {elapsed}s
+            </span>
+          </div>
+          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-baseline">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.max(4, progressPct)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-ink-muted">
+            Scanning live prices, news, movers, and indicators — usually about a
+            minute. Findings and order tickets post here the moment it finishes.
+          </p>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="shrink-0 border-t border-hairline pt-3">
