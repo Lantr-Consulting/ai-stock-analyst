@@ -171,3 +171,22 @@ def pending_symbols(user_id: str) -> set[str]:
         params={"user_id": f"eq.{user_id}", "status": "eq.proposed", "select": "symbol"},
     )
     return {r["symbol"] for r in rows if r.get("symbol")}
+
+
+# ---------------------------------------------------------------------------
+# Chat messages (persisted threads)
+# ---------------------------------------------------------------------------
+
+def add_message(user_id: str, role: str, text: str) -> None:
+    _rest("POST", "messages", json={"user_id": user_id, "role": role, "text": text})
+
+
+def list_messages(user_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    rows = _rest(
+        "GET", "messages",
+        params={"user_id": f"eq.{user_id}", "order": "created_at.desc", "limit": limit},
+    )
+    return [
+        {"id": str(r["id"]), "role": r["role"], "text": r["text"], "at": r["created_at"]}
+        for r in reversed(rows)
+    ]

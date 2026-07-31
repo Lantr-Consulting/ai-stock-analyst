@@ -154,12 +154,17 @@ export function interpretProfile(instructions: string): Promise<InterpretResult>
   });
 }
 
-export async function askAnalyst(messages: ChatMessage[]): Promise<string> {
-  const data = await req<{ text: string }>("/chat", {
+export async function askAnalyst(
+  messages: ChatMessage[]
+): Promise<{ text: string; strategyUpdated: boolean }> {
+  return req("/chat", {
     method: "POST",
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, text: m.text })),
     }),
   });
-  return data.text;
+}
+
+export function getChatHistory(): Promise<ChatMessage[]> {
+  return req("/chat/history");
 }

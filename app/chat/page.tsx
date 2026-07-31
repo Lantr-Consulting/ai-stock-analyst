@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { askAnalyst, isSignedOut } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { askAnalyst, getChatHistory, isSignedOut } from "@/lib/api";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
 
@@ -20,6 +20,12 @@ export default function ChatPage() {
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
 
+  useEffect(() => {
+    getChatHistory()
+      .then((h) => setMessages(h))
+      .catch(() => {});
+  }, []);
+
   async function send(text: string) {
     const t = text.trim();
     if (!t || thinking) return;
@@ -35,7 +41,8 @@ export default function ChatPage() {
     setThinking(true);
     let reply: string;
     try {
-      reply = await askAnalyst(thread);
+      const res = await askAnalyst(thread);
+      reply = res.text;
     } catch (e) {
       reply = isSignedOut(e)
         ? "You're not signed in — sign in (link in the sidebar) and I'll answer from your own account records."

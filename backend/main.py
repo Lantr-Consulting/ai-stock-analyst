@@ -444,13 +444,7 @@ class InterpretRequest(BaseModel):
     instructions: str
 
 
-@app.post("/interpret-profile")
-def interpret_profile(
-    req: InterpretRequest, user: dict = Depends(current_user)
-) -> dict[str, Any]:
-    if not req.instructions.strip():
-        raise HTTPException(status_code=400, detail="instructions is empty")
-    row = _agent_for(user)
+def _apply_instructions(user: dict[str, Any], row: dict[str, Any], instructions: str) -> dict[str, Any]:
     current = {"profile": row["profile"], "strategy": row["strategy"]}
     completion = client.chat.completions.create(
         model=MODEL,
@@ -461,7 +455,7 @@ def interpret_profile(
                 "role": "user",
                 "content": (
                     f"CURRENT:\n{json.dumps(current)}\n\n"
-                    f"NEW INSTRUCTIONS:\n{req.instructions}"
+                    f"NEW INSTRUCTIONS:\n{instructions}"
                 ),
             },
         ],
@@ -480,7 +474,7 @@ def interpret_profile(
             "strategy": strategy,
             "profile_version": row["profile_version"] + 1,
             "strategy_version": row["strategy_version"] + 1,
-            "raw_instructions": [*row["raw_instructions"], req.instructions.strip()],
+            "raw_instructions": [*row["raw_instructions"], instructions.strip()],
         },
     )
     return {
@@ -490,6 +484,15 @@ def interpret_profile(
         "strategyVersion": updated["strategy_version"],
         "rawInstructions": updated["raw_instructions"],
     }
+
+
+@app.post("/interpret-profile")
+def interpret_profile(
+    req: InterpretRequest, user: dict = Depends(current_user)
+) -> dict[str, Any]:
+    if not req.instructions.strip():
+        raise HTTPException(status_code=400, detail="instructions is empty")
+    return _apply_instructions(user, _agent_for(user), req.instructions.strip())
 
 
 # ---------------------------------------------------------------------------
@@ -505,6 +508,11 @@ strategy, live portfolio, and recorded decisions (each with evidence and \
 safeguard results). When asked why something happened, cite the recorded \
 decision — do not invent trades, prices, news, or reasons that are not in \
 the records. If the records don't contain the answer, say so plainly.
+
+If the user expresses a DURABLE preference or instruction that should change \
+how their agent invests (sectors, names to favor/avoid, risk, cadence), end \
+your reply with a line in exactly this form (otherwise omit it):
+UPDATE_STRATEGY: <one-sentence instruction capturing the preference>
 
 Style: warm, concise, plain language for a smart beginner. A few sentences, \
 not essays. Never give advice about real-money investing; if asked, remind \
@@ -554,4 +562,23 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
         ],
         temperature=0.5,
     )
-    return {"text": completion.choices[0].message.content or ""}
+    text = completion.choices[0].message.content or ""
+    strategy_updated = False
+    if "UPDATE_STRATEGY:" in text:
+        instruction = text.rsplit("UPDATE_STRATEGY:", 1)[1].strip()
+        text = text.rsplit("UPDATE_STRATEGY:", 1)[0].strip()
+        if instruction and row["activated"]:
+            try:
+                _apply_instructions(user, row, instruction)
+                strategy_updated = True
+                text += "\n\n(I've updated your strategy to reflect this.)"
+            except Exception:
+                pass
+    db.add_message(user["id"], "user", req.messages[-1].text)
+    db.add_message(user["id"], "agent", text)
+    return {"text": text, "strategyUpdated": strategy_updated}
+
+
+@app.get("/chat/history")
+def chat_history(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
+    return db.list_messages(user["id"])
