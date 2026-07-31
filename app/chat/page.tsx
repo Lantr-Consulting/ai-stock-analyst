@@ -74,9 +74,29 @@ export default function ChatPage() {
         getThreads().then(setThreads).catch(() => {});
       }
     } catch (e) {
-      reply = isSignedOut(e)
-        ? "You're not signed in — sign in (link in the sidebar) and I'll answer from your own account records."
-        : OFFLINE_REPLY;
+      if (isSignedOut(e)) {
+        reply =
+          "You're not signed in — sign in (link in the sidebar) and I'll answer from your own account records.";
+      } else {
+        // The reply may still be completing server-side — keep listening.
+        toast("info", "Taking longer than usual — still listening for the reply…");
+        const since = userMsg.at;
+        for (let i = 0; i < 15; i++) {
+          await new Promise((r) => setTimeout(r, 4000));
+          try {
+            const h = await getChatHistory(threadId ?? undefined);
+            const last = h[h.length - 1];
+            if (last && last.role === "agent" && last.at > since) {
+              setMessages(h);
+              setThinking(false);
+              return;
+            }
+          } catch {}
+        }
+        toast("error", "No reply came through — please send that again.");
+        setThinking(false);
+        return;
+      }
     }
     setMessages((m) => [
       ...m,
