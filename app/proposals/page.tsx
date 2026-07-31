@@ -23,12 +23,23 @@ export default function ProposalsPage() {
   const offline = status !== "live";
 
   useEffect(() => {
-    getDecisions()
-      .then(setDecisions)
-      .catch((e) => {
-        setStatus(isSignedOut(e) ? "signedOut" : "offline");
-        setDecisions(mockDecisions);
-      });
+    const load = () =>
+      getDecisions()
+        .then(setDecisions)
+        .catch((e) => {
+          setStatus(isSignedOut(e) ? "signedOut" : "offline");
+          setDecisions((prev) => prev ?? mockDecisions);
+        });
+    load();
+    const onFocus = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   async function research() {
