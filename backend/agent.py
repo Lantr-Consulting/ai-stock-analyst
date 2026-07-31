@@ -52,8 +52,11 @@ Discipline:
   rules set the bounds.
 - If the portfolio already matches the target, return zero orders — holding
   is a respectable decision.
-- Start from the watchlist ({universe}) but you may research and propose
-  ANY US-listed stock or ETF that fits the user's profile — when you go
+- The watchlist ({universe}) is a starting point ONLY — ignore any strategy
+  rule that implies you are limited to it. Every cycle, actively look beyond
+  it: sector peers of the user's interests (e.g. for AI hardware: MRVL, MU,
+  LRCX, SNDK, LITE and similar), plus market movers. Propose ANY US-listed
+  stock or ETF that fits the user's profile — when you go
   beyond the watchlist, say why in the order's rationale. Avoid illiquid
   or sub-$3 names; a deterministic engine rejects them anyway.
 
