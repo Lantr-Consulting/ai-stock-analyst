@@ -5,7 +5,12 @@ import Link from "next/link";
 import { Allocation } from "@/components/allocation";
 import { Card, StatTile, StatusBadge } from "@/components/ui";
 import { ValueChart } from "@/components/value-chart";
-import { getDecisions, getPortfolio, type LivePortfolio } from "@/lib/api";
+import {
+  getDecisions,
+  getPortfolio,
+  isSignedOut,
+  type LivePortfolio,
+} from "@/lib/api";
 import { dateTime, usd } from "@/lib/format";
 import {
   decisions as mockDecisions,
@@ -18,7 +23,7 @@ import type { Decision } from "@/lib/types";
 export default function Dashboard() {
   const [live, setLive] = useState<LivePortfolio | null>(null);
   const [decisions, setDecisions] = useState<Decision[] | null>(null);
-  const [offline, setOffline] = useState(false);
+  const [status, setStatus] = useState<"live" | "signedOut" | "offline">("live");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,9 +32,10 @@ export default function Dashboard() {
         setLive(p);
         setDecisions(d);
       })
-      .catch(() => setOffline(true))
+      .catch((e) => setStatus(isSignedOut(e) ? "signedOut" : "offline"))
       .finally(() => setLoading(false));
   }, []);
+  const offline = status !== "live";
 
   const snapshot = live ?? mockPortfolio;
   const history = live ? live.history : mockHistory;
@@ -64,9 +70,19 @@ export default function Dashboard() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Portfolio</h1>
           <p className="mt-0.5 text-sm text-ink-muted">
-            {offline
-              ? "Sample data — backend unreachable"
-              : `Live paper account · as of ${dateTime(snapshot.asOf)}`}
+            {status === "signedOut" ? (
+              <>
+                Sample data —{" "}
+                <Link href="/signin" className="font-medium text-series-1 hover:underline">
+                  sign in
+                </Link>{" "}
+                to see your own agent
+              </>
+            ) : status === "offline" ? (
+              "Sample data — backend unreachable"
+            ) : (
+              `Live paper account${live?.sharedDemoAccount ? " (shared demo)" : ""} · as of ${dateTime(snapshot.asOf)}`
+            )}
           </p>
         </div>
         {pending.length > 0 && (

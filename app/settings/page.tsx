@@ -1,8 +1,99 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getMe, isSignedOut, setAlpacaKeys } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { safeguards as initial } from "@/lib/mock";
+
+function BrokerageCard() {
+  const [state, setState] = useState<"loading" | "signedOut" | "connected" | "shared">(
+    "loading"
+  );
+  const [apiKey, setApiKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getMe()
+      .then((me) => setState(me.hasAlpacaKeys ? "connected" : "shared"))
+      .catch((e) => setState(isSignedOut(e) ? "signedOut" : "shared"));
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!apiKey.trim() || !secretKey.trim() || busy) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      await setAlpacaKeys(apiKey.trim(), secretKey.trim());
+      setState("connected");
+      setApiKey("");
+      setSecretKey("");
+      setNote("Connected — your agent now trades your own paper account.");
+    } catch (err) {
+      setNote(
+        err instanceof Error ? err.message : "Couldn't save keys — try again."
+      );
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Card title="Brokerage connection (Alpaca paper)">
+      {state === "signedOut" ? (
+        <p className="text-sm text-ink-2">
+          <Link href="/signin" className="font-medium text-series-1 hover:underline">
+            Sign in
+          </Link>{" "}
+          to connect your own free Alpaca paper account. Until then, the shared
+          demo account is shown.
+        </p>
+      ) : state === "connected" ? (
+        <p className="text-sm text-ink-2">
+          <span className="font-medium text-delta-up dark:text-good">
+            Connected
+          </span>{" "}
+          — your agent trades your own paper account. Paste new keys below to
+          replace them.
+        </p>
+      ) : state === "shared" ? (
+        <p className="text-sm text-ink-2">
+          Using the <span className="font-medium">shared demo account</span>.
+          Create a free paper account at alpaca.markets (no credit card),
+          generate paper API keys, and connect them here — then your agent
+          manages a portfolio that&apos;s yours alone.
+        </p>
+      ) : null}
+      {(state === "shared" || state === "connected") && (
+        <form onSubmit={save} className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Paper API key"
+            className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
+          />
+          <input
+            value={secretKey}
+            onChange={(e) => setSecretKey(e.target.value)}
+            type="password"
+            placeholder="Paper secret key"
+            className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? "Checking…" : "Connect"}
+          </button>
+        </form>
+      )}
+      {note && <p className="mt-2 text-xs text-ink-2">{note}</p>}
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
   const [sg, setSg] = useState(initial);
@@ -18,6 +109,8 @@ export default function SettingsPage() {
           model&apos;s control. Every proposed order must pass all of them.
         </p>
       </header>
+
+      <BrokerageCard />
 
       <Card title="Agent status">
         <div className="flex items-center justify-between gap-4">

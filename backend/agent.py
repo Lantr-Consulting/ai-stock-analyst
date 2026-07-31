@@ -45,26 +45,30 @@ When you are done researching, respond with ONLY a JSON object, no prose:
 {{"action": "buy" | "sell" | "hold", "symbol": "XYZ" or null, "qty": <whole number> or null, "rationale": "<2-3 sentences citing your evidence>"}}"""
 
 
-def _tools() -> list[Any]:
+def _tools(keys: broker.Keys = None) -> list[Any]:
     @tool
     def get_portfolio() -> str:
         """Current paper account: cash, equity, and open positions."""
-        return json.dumps(broker.account_snapshot())
+        return json.dumps(broker.account_snapshot(keys))
 
     @tool
     def get_latest_prices(symbols: str) -> str:
         """Latest trade prices. Pass comma-separated symbols, e.g. 'AAPL,MSFT'."""
-        return json.dumps(broker.latest_prices([s.strip() for s in symbols.split(",")]))
+        return json.dumps(
+            broker.latest_prices([s.strip() for s in symbols.split(",")], keys)
+        )
 
     @tool
     def get_daily_bars(symbol: str, days: int = 30) -> str:
         """Recent daily OHLCV bars for one symbol (default 30 days)."""
-        return json.dumps(broker.daily_bars(symbol, days))
+        return json.dumps(broker.daily_bars(symbol, days, keys))
 
     @tool
     def get_recent_news(symbols: str, limit: int = 8) -> str:
         """Recent market news. Pass comma-separated symbols."""
-        return json.dumps(broker.recent_news([s.strip() for s in symbols.split(",")], limit))
+        return json.dumps(
+            broker.recent_news([s.strip() for s in symbols.split(",")], limit, keys)
+        )
 
     return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news]
 
@@ -83,7 +87,11 @@ def _summarize_tool_output(name: str, output: str) -> str:
     return text[:400]
 
 
-def run_research_cycle(strategy: dict[str, Any], safeguards: dict[str, Any]) -> dict[str, Any]:
+def run_research_cycle(
+    strategy: dict[str, Any],
+    safeguards: dict[str, Any],
+    keys: broker.Keys = None,
+) -> dict[str, Any]:
     """Returns {action, symbol, qty, rationale, evidence:[...]}."""
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -92,7 +100,7 @@ def run_research_cycle(strategy: dict[str, Any], safeguards: dict[str, Any]) -> 
             ("placeholder", "{agent_scratchpad}"),
         ]
     )
-    tools = _tools()
+    tools = _tools(keys)
     executor = AgentExecutor(
         agent=create_tool_calling_agent(_llm(), tools, prompt),
         tools=tools,

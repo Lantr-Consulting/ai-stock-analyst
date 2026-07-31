@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { askAnalyst } from "@/lib/api";
+import { askAnalyst, isSignedOut } from "@/lib/api";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
 
@@ -36,8 +36,10 @@ export default function ChatPage() {
     let reply: string;
     try {
       reply = await askAnalyst(thread);
-    } catch {
-      reply = OFFLINE_REPLY;
+    } catch (e) {
+      reply = isSignedOut(e)
+        ? "You're not signed in — sign in (link in the sidebar) and I'll answer from your own account records."
+        : OFFLINE_REPLY;
     }
     setMessages((m) => [
       ...m,

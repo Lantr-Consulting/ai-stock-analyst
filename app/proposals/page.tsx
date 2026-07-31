@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   approveDecision,
   getDecisions,
+  isSignedOut,
   rejectDecision,
   runResearchCycle,
 } from "@/lib/api";
@@ -14,16 +16,17 @@ import type { Decision } from "@/lib/types";
 
 export default function ProposalsPage() {
   const [decisions, setDecisions] = useState<Decision[] | null>(null);
-  const [offline, setOffline] = useState(false);
+  const [status, setStatus] = useState<"live" | "signedOut" | "offline">("live");
   const [researching, setResearching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const offline = status !== "live";
 
   useEffect(() => {
     getDecisions()
       .then(setDecisions)
-      .catch(() => {
-        setOffline(true);
+      .catch((e) => {
+        setStatus(isSignedOut(e) ? "signedOut" : "offline");
         setDecisions(mockDecisions);
       });
   }, []);
@@ -73,9 +76,19 @@ export default function ProposalsPage() {
             Trade proposals
           </h1>
           <p className="mt-0.5 text-sm text-ink-muted">
-            {offline
-              ? "Sample data — backend unreachable"
-              : "Every proposed order shows its evidence and safeguard checks. Nothing is submitted to the paper account until you approve it."}
+            {status === "signedOut" ? (
+              <>
+                Sample data —{" "}
+                <Link href="/signin" className="font-medium text-series-1 hover:underline">
+                  sign in
+                </Link>{" "}
+                to run your own agent
+              </>
+            ) : status === "offline" ? (
+              "Sample data — backend unreachable"
+            ) : (
+              "Every proposed order shows its evidence and safeguard checks. Nothing is submitted to the paper account until you approve it."
+            )}
           </p>
         </div>
         {!offline && (

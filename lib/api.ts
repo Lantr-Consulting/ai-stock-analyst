@@ -1,3 +1,4 @@
+import { supabase } from "./supabase";
 import type {
   ChatMessage,
   Decision,
@@ -12,22 +13,74 @@ import type {
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number
+  ) {
+    super(message);
+  }
+}
+
+export function isSignedOut(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 401;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
   });
-  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  if (!res.ok) {
+    let detail = `${res.status}`;
+    try {
+      detail = (await res.json()).detail ?? detail;
+    } catch {}
+    throw new ApiError(detail, res.status);
+  }
   return res.json();
 }
 
 // ---------------------------------------------------------------------------
-// Portfolio (live paper account, Milestone 4)
+// Me: the signed-in user's agent
+// ---------------------------------------------------------------------------
+
+export interface Me {
+  email: string;
+  profile: Omit<InvestorProfile, "version" | "updatedAt" | "rawInstructions">;
+  strategy: Omit<Strategy, "version" | "updatedAt">;
+  profileVersion: number;
+  strategyVersion: number;
+  rawInstructions: string[];
+  hasAlpacaKeys: boolean;
+  paused: boolean;
+}
+
+export function getMe(): Promise<Me> {
+  return req("/me");
+}
+
+export function setAlpacaKeys(apiKey: string, secretKey: string): Promise<{ ok: boolean }> {
+  return req("/me/alpaca-keys", {
+    method: "POST",
+    body: JSON.stringify({ apiKey, secretKey }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio (the signed-in user's paper account)
 // ---------------------------------------------------------------------------
 
 export interface LivePortfolio extends PortfolioSnapshot {
   equity: number;
   history: ValuePoint[];
+  sharedDemoAccount: boolean;
 }
 
 export function getPortfolio(): Promise<LivePortfolio> {
@@ -35,7 +88,7 @@ export function getPortfolio(): Promise<LivePortfolio> {
 }
 
 // ---------------------------------------------------------------------------
-// Decisions: research -> propose -> approve/reject
+// Decisions
 // ---------------------------------------------------------------------------
 
 export function getDecisions(): Promise<Decision[]> {
@@ -55,25 +108,21 @@ export function rejectDecision(id: string): Promise<Decision> {
 }
 
 // ---------------------------------------------------------------------------
-// Brain (Milestone 3)
+// Brain
 // ---------------------------------------------------------------------------
 
-export interface InterpretedUpdate {
-  profile: Omit<InvestorProfile, "version" | "updatedAt" | "rawInstructions">;
-  strategy: Omit<Strategy, "version" | "updatedAt">;
+export interface InterpretResult {
+  profile: Me["profile"];
+  strategy: Me["strategy"];
+  profileVersion: number;
+  strategyVersion: number;
+  rawInstructions: string[];
 }
 
-export function interpretProfile(
-  instructions: string,
-  current: { profile: InvestorProfile; strategy: Strategy }
-): Promise<InterpretedUpdate> {
+export function interpretProfile(instructions: string): Promise<InterpretResult> {
   return req("/interpret-profile", {
     method: "POST",
-    body: JSON.stringify({
-      instructions,
-      profile: current.profile,
-      strategy: current.strategy,
-    }),
+    body: JSON.stringify({ instructions }),
   });
 }
 

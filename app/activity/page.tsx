@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDecisions } from "@/lib/api";
+import Link from "next/link";
+import { getDecisions, isSignedOut } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { dateTime, usd } from "@/lib/format";
 import { activity as mockActivity } from "@/lib/mock";
@@ -61,13 +62,14 @@ function toEvents(decisions: Decision[]): ActivityEvent[] {
 
 export default function ActivityPage() {
   const [events, setEvents] = useState<ActivityEvent[] | null>(null);
-  const [offline, setOffline] = useState(false);
+  const [status, setStatus] = useState<"live" | "signedOut" | "offline">("live");
+  const offline = status !== "live";
 
   useEffect(() => {
     getDecisions()
       .then((d) => setEvents(toEvents(d)))
-      .catch(() => {
-        setOffline(true);
+      .catch((e) => {
+        setStatus(isSignedOut(e) ? "signedOut" : "offline");
         setEvents(mockActivity);
       });
   }, []);
@@ -77,9 +79,19 @@ export default function ActivityPage() {
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Activity</h1>
         <p className="mt-0.5 text-sm text-ink-muted">
-          {offline
-            ? "Sample data — backend unreachable"
-            : "Every research cycle, proposal, approval, order, and fill — the agent's complete, auditable record."}
+          {status === "signedOut" ? (
+            <>
+              Sample data —{" "}
+              <Link href="/signin" className="font-medium text-series-1 hover:underline">
+                sign in
+              </Link>{" "}
+              to see your own record
+            </>
+          ) : status === "offline" ? (
+            "Sample data — backend unreachable"
+          ) : (
+            "Every research cycle, proposal, approval, order, and fill — the agent's complete, auditable record."
+          )}
         </p>
       </header>
 
