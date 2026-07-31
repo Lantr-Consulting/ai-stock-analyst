@@ -91,8 +91,8 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-1 gap-6">
-      <aside className="order-last w-56 shrink-0 max-lg:hidden">
+    <div className="flex min-h-0 flex-1 gap-6">
+      <aside className="order-last w-56 shrink-0 self-start sticky top-0 max-h-full overflow-y-auto max-lg:hidden">
         <button
           onClick={startNewChat}
           className="mb-3 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
@@ -122,7 +122,7 @@ export default function ChatPage() {
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
@@ -159,7 +159,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
         {messages.length === 0 && !thinking && (
           <div className="rounded-xl border border-dashed border-hairline px-5 py-8 text-center text-sm text-ink-muted">
             Ask about the live paper account — positions, cash, any recorded
@@ -196,7 +196,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto shrink-0 pt-2">
         <div className="mb-2 flex flex-wrap gap-1.5">
           {SUGGESTED.map((s) => (
             <button

@@ -121,7 +121,7 @@ function Wordmark() {
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface px-3 py-5 max-md:hidden">
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface px-3 py-5 max-md:hidden">
       <Wordmark />
       <nav className="flex flex-col gap-0.5">
         {NAV.map((item) => {
