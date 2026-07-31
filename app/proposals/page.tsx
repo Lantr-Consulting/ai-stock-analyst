@@ -153,7 +153,7 @@ export default function ProposalsPage() {
   return (
     <div className="flex flex-1 gap-6">
       {runs.length > 0 && (
-        <aside className="w-56 shrink-0 max-lg:hidden">
+        <aside className="order-last w-56 shrink-0 max-lg:hidden">
           <div className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
             Research sessions
           </div>

@@ -92,7 +92,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-1 gap-6">
-      <aside className="w-56 shrink-0 max-lg:hidden">
+      <aside className="order-last w-56 shrink-0 max-lg:hidden">
         <button
           onClick={startNewChat}
           className="mb-3 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
