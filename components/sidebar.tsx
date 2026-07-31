@@ -34,23 +34,6 @@ const NAV = [
     ),
   },
   {
-    href: "/setup",
-    label: "Agent setup",
-    icon: (
-      <Icon>
-        <line x1="4" y1="21" x2="4" y2="13" />
-        <line x1="4" y1="9" x2="4" y2="3" />
-        <line x1="12" y1="21" x2="12" y2="13" />
-        <line x1="12" y1="9" x2="12" y2="3" />
-        <line x1="20" y1="21" x2="20" y2="13" />
-        <line x1="20" y1="9" x2="20" y2="3" />
-        <line x1="2" y1="11" x2="6" y2="11" />
-        <line x1="10" y1="11" x2="14" y2="11" />
-        <line x1="18" y1="11" x2="22" y2="11" />
-      </Icon>
-    ),
-  },
-  {
     href: "/discover",
     label: "Discover",
     icon: (
@@ -80,11 +63,19 @@ const NAV = [
     ),
   },
   {
-    href: "/activity",
-    label: "Activity",
+    href: "/setup",
+    label: "Investor profile",
     icon: (
       <Icon>
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        <line x1="4" y1="21" x2="4" y2="13" />
+        <line x1="4" y1="9" x2="4" y2="3" />
+        <line x1="12" y1="21" x2="12" y2="13" />
+        <line x1="12" y1="9" x2="12" y2="3" />
+        <line x1="20" y1="21" x2="20" y2="13" />
+        <line x1="20" y1="9" x2="20" y2="3" />
+        <line x1="2" y1="11" x2="6" y2="11" />
+        <line x1="10" y1="11" x2="14" y2="11" />
+        <line x1="18" y1="11" x2="22" y2="11" />
       </Icon>
     ),
   },

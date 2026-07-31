@@ -88,7 +88,7 @@ export default function SetupPage() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Agent setup</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Investor profile</h1>
         <p className="mt-0.5 text-sm text-ink-muted">
           {status === "signedOut" ? (
             <>
