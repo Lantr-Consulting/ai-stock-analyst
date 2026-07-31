@@ -432,7 +432,17 @@ def reject(
 
 @app.get("/market/overview")
 def market_overview() -> dict[str, Any]:
-    return broker.market_movers()
+    out = broker.market_movers()
+    symbols = list({
+        m["symbol"]
+        for group in ("gainers", "losers", "mostActive")
+        for m in out.get(group, [])[:8]
+    })
+    try:
+        out["sparks"] = broker.multi_closes(symbols, 30)
+    except Exception:
+        out["sparks"] = {}
+    return out
 
 
 @app.get("/market/ticker/{symbol}")

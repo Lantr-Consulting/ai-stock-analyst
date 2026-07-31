@@ -261,6 +261,7 @@ export function getMarketOverview(): Promise<{
   gainers?: Mover[];
   losers?: Mover[];
   mostActive?: { symbol: string; volume: number }[];
+  sparks?: Record<string, number[]>;
 }> {
   return req("/market/overview");
 }

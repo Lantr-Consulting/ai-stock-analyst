@@ -280,3 +280,16 @@ def asset_info(symbol: str, keys: Keys = None) -> dict[str, Any] | None:
         "exchange": str(getattr(a, "exchange", "")).split(".")[-1],
         "tradable": bool(a.tradable),
     }
+
+
+def multi_closes(symbols: list[str], days: int = 30, keys: Keys = None) -> dict[str, list[float]]:
+    """Closing prices for many symbols in one request — sparkline fuel."""
+    if not symbols:
+        return {}
+    start = datetime.now(timezone.utc) - timedelta(days=days * 2)
+    req = StockBarsRequest(symbol_or_symbols=symbols, timeframe=TimeFrame.Day, start=start)
+    bars = data(keys).get_stock_bars(req)
+    return {
+        sym: [float(b.close) for b in rows[-days:]]
+        for sym, rows in bars.data.items()
+    }

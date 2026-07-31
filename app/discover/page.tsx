@@ -14,46 +14,80 @@ import { Card } from "@/components/ui";
 import { dateTime, usd } from "@/lib/format";
 import { useToast } from "@/components/toast";
 
-function Spark({ closes }: { closes: number[] }) {
+function Spark({
+  closes,
+  className = "h-16 w-full",
+  fill = false,
+  id = "",
+}: {
+  closes: number[];
+  className?: string;
+  fill?: boolean;
+  id?: string;
+}) {
   if (closes.length < 2) return null;
   const min = Math.min(...closes);
   const max = Math.max(...closes);
   const up = closes[closes.length - 1] >= closes[0];
-  const pts = closes
-    .map(
-      (c, i) =>
-        `${(i / (closes.length - 1)) * 300},${60 - ((c - min) / (max - min || 1)) * 56 + 2}`
-    )
-    .join(" ");
+  const color = up ? "var(--series-1)" : "var(--critical)";
+  const pt = (c: number, i: number) =>
+    `${(i / (closes.length - 1)) * 300},${60 - ((c - min) / (max - min || 1)) * 54 + 3}`;
+  const pts = closes.map(pt).join(" ");
   return (
-    <svg viewBox="0 0 300 64" className="h-16 w-full" aria-label="60-day price trend">
+    <svg viewBox="0 0 300 64" className={className} preserveAspectRatio="none" aria-hidden>
+      {fill && (
+        <>
+          <defs>
+            <linearGradient id={`sg-${id}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.22} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <polygon points={`${pts} 300,64 0,64`} fill={`url(#sg-${id})`} />
+        </>
+      )}
       <polyline
         points={pts}
         fill="none"
-        stroke={up ? "var(--series-1)" : "var(--critical)"}
-        strokeWidth={2}
+        stroke={color}
+        strokeWidth={2.5}
         strokeLinejoin="round"
         strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
       />
     </svg>
   );
 }
 
-function MoverRow({ m, onPick }: { m: Mover; onPick: (s: string) => void }) {
+function MoverRow({
+  m,
+  spark,
+  onPick,
+}: {
+  m: Mover;
+  spark?: number[];
+  onPick: (s: string) => void;
+}) {
+  const up = m.pctChange >= 0;
   return (
     <button
       onClick={() => onPick(m.symbol)}
-      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-white/5"
+      className="grid w-full grid-cols-[3.5rem_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5"
     >
-      <span className="font-semibold">{m.symbol}</span>
-      <span className="flex items-center gap-3">
-        <span style={{ fontVariantNumeric: "tabular-nums" }}>{usd(m.price)}</span>
+      <span className="text-sm font-bold tracking-tight">{m.symbol}</span>
+      <span className="h-7">
+        {spark && spark.length > 1 && <Spark closes={spark} className="h-7 w-full" />}
+      </span>
+      <span className="flex flex-col items-end">
+        <span className="text-sm font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {usd(m.price)}
+        </span>
         <span
-          className={`w-16 text-right font-medium ${m.pctChange >= 0 ? "text-delta-up" : "text-delta-down"}`}
+          className={`text-xs font-semibold ${up ? "text-delta-up" : "text-delta-down"}`}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {m.pctChange >= 0 ? "+" : ""}
-          {m.pctChange.toFixed(1)}%
+          {up ? "+" : ""}
+          {m.pctChange.toFixed(2)}%
         </span>
       </span>
     </button>
@@ -156,7 +190,7 @@ export default function DiscoverPage() {
             </div>
             {ind?.price != null && (
               <div className="text-right">
-                <div className="text-2xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <div className="text-3xl font-bold tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
                   {usd(ind.price)}
                 </div>
                 {ind.return30dPct != null && (
@@ -171,7 +205,7 @@ export default function DiscoverPage() {
             )}
           </div>
           <div className="px-5 py-4">
-            <Spark closes={detail.bars.map((b) => b.close)} />
+            <Spark closes={detail.bars.map((b) => b.close)} className="h-32 w-full" fill id={detail.info.symbol} />
             {ind && !ind.error && (
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Stat label="Trend" value={trendUp == null ? "—" : trendUp ? "Above SMA20" : "Below SMA20"} tone={trendUp == null ? "" : trendUp ? "text-delta-up" : "text-delta-down"} />
@@ -217,30 +251,47 @@ export default function DiscoverPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Top gainers">
-          {(overview?.gainers ?? []).slice(0, 8).map((m) => (
-            <MoverRow key={m.symbol} m={m} onPick={lookup} />
-          ))}
-          {!overview && <p className="text-sm text-ink-muted">Loading…</p>}
-        </Card>
-        <Card title="Top losers">
-          {(overview?.losers ?? []).slice(0, 8).map((m) => (
-            <MoverRow key={m.symbol} m={m} onPick={lookup} />
-          ))}
-        </Card>
-        <Card title="Most active">
+        {[
+          { title: "Top gainers", rows: overview?.gainers ?? [] },
+          { title: "Top losers", rows: overview?.losers ?? [] },
+        ].map((col) => (
+          <Card key={col.title} title={col.title} className="!px-2 !py-4 [&>div]:px-3">
+            {col.rows.slice(0, 8).map((m) => (
+              <MoverRow
+                key={m.symbol}
+                m={m}
+                spark={overview?.sparks?.[m.symbol]}
+                onPick={lookup}
+              />
+            ))}
+            {!overview &&
+              [0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="mx-3 my-2 h-9 animate-pulse rounded-lg bg-white/5" />
+              ))}
+          </Card>
+        ))}
+        <Card title="Most active" className="!px-2 !py-4 [&>div]:px-3">
           {(overview?.mostActive ?? []).slice(0, 8).map((m) => (
             <button
               key={m.symbol}
               onClick={() => lookup(m.symbol)}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-white/5"
+              className="grid w-full grid-cols-[3.5rem_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5"
             >
-              <span className="font-semibold">{m.symbol}</span>
-              <span className="text-xs text-ink-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {(m.volume / 1e6).toFixed(1)}M vol
+              <span className="text-sm font-bold tracking-tight">{m.symbol}</span>
+              <span className="h-7">
+                {overview?.sparks?.[m.symbol] && (
+                  <Spark closes={overview.sparks[m.symbol]} className="h-7 w-full" />
+                )}
+              </span>
+              <span className="text-xs font-medium text-ink-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {(m.volume / 1e6).toFixed(1)}M
               </span>
             </button>
           ))}
+          {!overview &&
+            [0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="mx-3 my-2 h-9 animate-pulse rounded-lg bg-white/5" />
+            ))}
         </Card>
       </div>
     </div>
