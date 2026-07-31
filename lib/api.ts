@@ -128,8 +128,11 @@ export function approveDecision(id: string): Promise<Decision> {
   return req(`/decisions/${id}/approve`, { method: "POST", body: "{}" });
 }
 
-export function rejectDecision(id: string): Promise<Decision> {
-  return req(`/decisions/${id}/reject`, { method: "POST", body: "{}" });
+export function rejectDecision(id: string, reason?: string): Promise<Decision> {
+  return req(`/decisions/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
 }
 
 // ---------------------------------------------------------------------------

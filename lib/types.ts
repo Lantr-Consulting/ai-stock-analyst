@@ -89,6 +89,7 @@ export interface Decision {
   safeguards: SafeguardCheck[];
   status: DecisionStatus;
   order?: OrderRecord;
+  feedback?: string | null;
 }
 
 export type ActivityKind =

@@ -53,11 +53,13 @@ export default function ProposalsPage() {
     setResearching(false);
   }
 
-  async function resolve(id: string, action: "approve" | "reject") {
+  async function resolve(id: string, action: "approve" | "reject", reason?: string) {
     setBusyId(id);
     try {
       const updated =
-        action === "approve" ? await approveDecision(id) : await rejectDecision(id);
+        action === "approve"
+          ? await approveDecision(id)
+          : await rejectDecision(id, reason);
       setDecisions((prev) =>
         (prev ?? []).map((d) => (d.id === id ? updated : d))
       );
@@ -125,7 +127,7 @@ export default function ProposalsPage() {
           key={d.id}
           decision={d}
           busy={busyId === d.id}
-          onResolve={offline ? undefined : (a) => resolve(d.id, a)}
+          onResolve={offline ? undefined : (a, r) => resolve(d.id, a, r)}
         />
       ))}
 
@@ -148,8 +150,10 @@ function ProposalCard({
 }: {
   decision: Decision;
   busy: boolean;
-  onResolve?: (action: "approve" | "reject") => void;
+  onResolve?: (action: "approve" | "reject", reason?: string) => void;
 }) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
   const title =
     d.action === "hold" || d.action === "no_action" || !d.symbol
       ? "Hold — no action"
@@ -178,7 +182,7 @@ function ProposalCard({
               {busy ? "Submitting…" : "Approve"}
             </button>
             <button
-              onClick={() => onResolve("reject")}
+              onClick={() => setRejecting(true)}
               disabled={busy}
               className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] disabled:opacity-50 dark:hover:bg-white/5"
             >
@@ -188,7 +192,39 @@ function ProposalCard({
         )}
       </div>
 
+      {rejecting && d.status === "proposed" && onResolve && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onResolve("reject", reason.trim() || undefined);
+          }}
+          className="mt-3 flex gap-2"
+        >
+          <input
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why? (optional — the agent learns from this)"
+            className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg bg-critical px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? "Rejecting…" : "Confirm reject"}
+          </button>
+        </form>
+      )}
+
       <p className="mt-3 text-sm leading-relaxed text-ink-2">{d.rationale}</p>
+
+      {d.status === "rejected" && d.feedback && (
+        <p className="mt-2 rounded-lg bg-critical/5 px-3 py-2 text-sm text-ink-2">
+          <span className="font-medium">Your reason:</span> {d.feedback} —
+          future research cycles take this into account.
+        </p>
+      )}
 
       {d.evidence.length > 0 && (
         <details className="mt-4">

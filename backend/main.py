@@ -237,7 +237,14 @@ def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
         "universe", safeguards["approvedUniverse"]
     )
 
-    plan = research_agent.run_research_cycle(strategy, safeguards, keys)
+    lessons = []
+    for r in db.list_decisions(user["id"], limit=30):
+        if r.get("symbol") and r["status"] == "rejected":
+            why = f' — their reason: "{r["feedback"]}"' if r.get("feedback") else ""
+            lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
+        elif r.get("symbol") and r["status"] in ("approved", "filled"):
+            lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
+    plan = research_agent.run_research_cycle(strategy, safeguards, keys, lessons[:12])
     evidence = plan.get("evidence", [])
     rationale = plan.get("rationale", "")
     target = [
@@ -369,14 +376,23 @@ def approve(decision_id: str, user: dict = Depends(current_user)) -> dict[str, A
     )
 
 
+class RejectRequest(BaseModel):
+    reason: str | None = None
+
+
 @app.post("/decisions/{decision_id}/reject")
-def reject(decision_id: str, user: dict = Depends(current_user)) -> dict[str, Any]:
+def reject(
+    decision_id: str, req: RejectRequest, user: dict = Depends(current_user)
+) -> dict[str, Any]:
     record = db.get_decision(user["id"], decision_id)
     if not record:
         raise HTTPException(status_code=404, detail="decision not found")
     if record["status"] != "proposed":
         raise HTTPException(status_code=409, detail=f"decision is {record['status']}, not proposed")
-    return db.update_decision(user["id"], decision_id, {"status": "rejected"})
+    fields: dict[str, Any] = {"status": "rejected"}
+    if req.reason and req.reason.strip():
+        fields["feedback"] = req.reason.strip()[:500]
+    return db.update_decision(user["id"], decision_id, fields)
 
 
 # ---------------------------------------------------------------------------

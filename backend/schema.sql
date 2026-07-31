@@ -52,3 +52,4 @@ create policy "read own decisions" on public.decisions
 -- Quant upgrade: agents are inactive until the user completes onboarding
 -- (reviews the interpreted strategy, edits universe/safeguards, activates).
 alter table public.agents add column if not exists activated boolean not null default false;
+alter table public.decisions add column if not exists feedback text;

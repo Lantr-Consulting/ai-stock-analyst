@@ -97,6 +97,7 @@ def _to_api(row: dict[str, Any]) -> dict[str, Any]:
         "safeguards": row["safeguards"],
         "status": row["status"],
         "order": row["order_record"],
+        "feedback": row.get("feedback"),
     }
 
 
@@ -151,6 +152,8 @@ def update_decision(user_id: str, decision_id: str, fields: dict[str, Any]) -> d
         mapped["order_record"] = fields["order"]
     if "safeguards" in fields:
         mapped["safeguards"] = fields["safeguards"]
+    if "feedback" in fields:
+        mapped["feedback"] = fields["feedback"]
     rows = _rest(
         "PATCH",
         "decisions",

@@ -38,6 +38,11 @@ Run one research cycle:
 Rules you must respect (a deterministic risk engine re-checks each order):
 {rules}
 
+The user's verdicts on your recent proposals — treat rejections and their
+reasons as standing instructions; do not re-propose something equivalent to
+a rejection unless conditions have clearly changed:
+{lessons}
+
 Discipline:
 - Every order needs evidence from your tool calls (price/indicator trend,
   news catalyst, or allocation gap). Cite specifics in the rationale.
@@ -117,6 +122,7 @@ def run_research_cycle(
     strategy: dict[str, Any],
     safeguards: dict[str, Any],
     keys: broker.Keys = None,
+    lessons: list[str] | None = None,
 ) -> dict[str, Any]:
     """Returns {action, symbol, qty, rationale, evidence:[...]}."""
     prompt = ChatPromptTemplate.from_messages(
@@ -139,6 +145,7 @@ def run_research_cycle(
             "rules": "\n".join(f"- {r}" for r in strategy.get("rules", [])),
             "universe": ", ".join(strategy.get("universe", [])),
             "max_order_pct": safeguards.get("maxOrderPct", 10),
+            "lessons": "\n".join(f"- {l}" for l in (lessons or [])) or "- (none yet)",
         }
     )
 
