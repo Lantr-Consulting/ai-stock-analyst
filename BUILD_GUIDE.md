@@ -110,7 +110,7 @@ deploy from `backend/` only; pin transitive deps (alpaca-py silently needs
 ### Phase 4 — Hands (course M9–M10)
 LangChain tool-calling agent: portfolio, latest prices, daily bars, news
 tools; evidence captured from intermediate steps onto the decision record.
-`risk.py` safeguards run in code,再-checked at approval time. Approve →
+`risk.py` safeguards run in code, re-checked at approval time. Approve →
 market order to Alpaca → fill reconciliation on read. *Teaching gold: our
 first live run proposed a $34.7k VOO buy and the risk engine blocked it —
 model proposes, code disposes. Also: return tool errors to the agent as data
