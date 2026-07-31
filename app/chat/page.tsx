@@ -54,7 +54,7 @@ export default function ChatPage() {
         .catch(() => {});
       getResearchRuns()
         .then((rs) => {
-          const running = rs.find((r) => r.status === "running") ?? null;
+          const running = rs.find((r) => r.status === "running" && !r.automation_id) ?? null;
           setActiveRun((prev) => {
             if (prev && !running) {
               const done = rs.find((r) => r.id === prev.id);

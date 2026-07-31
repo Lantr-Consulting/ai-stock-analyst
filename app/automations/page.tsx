@@ -6,10 +6,12 @@ import {
   createAutomation,
   deleteAutomation,
   getAutomations,
+  getResearchRuns,
   isSignedOut,
   runAutomation,
   toggleAutomation,
   type Automation,
+  type ResearchRun,
 } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { dateTime } from "@/lib/format";
@@ -48,12 +50,19 @@ export default function AutomationsPage() {
   const [cadence, setCadence] = useState("manual");
   const [hour, setHour] = useState(21);
   const [busy, setBusy] = useState(false);
+  const [runs, setRuns] = useState<ResearchRun[]>([]);
   const toast = useToast();
 
   useEffect(() => {
-    getAutomations()
-      .then(setAutos)
-      .catch((e) => setSignedOut(isSignedOut(e)));
+    const load = () => {
+      getAutomations()
+        .then(setAutos)
+        .catch((e) => setSignedOut(isSignedOut(e)));
+      getResearchRuns().then(setRuns).catch(() => {});
+    };
+    load();
+    const t = setInterval(load, 8000);
+    return () => clearInterval(t);
   }, []);
 
   async function create(e: React.FormEvent) {
@@ -158,7 +167,12 @@ export default function AutomationsPage() {
         </Card>
       )}
 
-      {(autos ?? []).map((a) => (
+      {(autos ?? []).map((a) => {
+        const mine = runs.filter((r) => r.automation_id === a.id);
+        const running = mine.find((r) => r.status === "running");
+        const latest = mine.find((r) => r.status !== "running");
+        const past = mine.filter((r) => r.status !== "running").slice(1, 6);
+        return (
         <Card key={a.id}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
@@ -219,8 +233,71 @@ export default function AutomationsPage() {
               </button>
             </div>
           </div>
+
+          {running && (
+            <div className="mt-4 rounded-xl bg-page px-4 py-3">
+              <div className="flex items-center gap-2 text-sm">
+                <span aria-hidden className="size-2 animate-pulse rounded-full bg-accent" />
+                <span className="font-medium">Running now…</span>
+                <span className="text-xs text-ink-muted">
+                  results appear here when it finishes
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-baseline">
+                <div className="h-full w-2/5 animate-pulse rounded-full bg-accent" />
+              </div>
+            </div>
+          )}
+
+          {latest && (
+            <div className="mt-4 rounded-xl bg-page px-4 py-3">
+              <div className="mb-1.5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                Latest result
+                <span
+                  aria-hidden
+                  className={`size-1.5 rounded-full ${latest.status === "error" ? "bg-critical" : "bg-good"}`}
+                />
+                <span className="normal-case">{dateTime(latest.finished_at ?? latest.started_at)}</span>
+              </div>
+              {latest.status === "error" ? (
+                <p className="text-sm text-critical">{latest.error ?? "Run failed."}</p>
+              ) : (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
+                  {latest.report ?? "No report recorded."}
+                </p>
+              )}
+              {latest.decisions.filter((d) => d.symbol).length > 0 && (
+                <a href="/proposals" className="mt-2 inline-block text-xs font-medium text-series-1 hover:underline">
+                  {latest.decisions.filter((d) => d.symbol).length} trade
+                  {latest.decisions.filter((d) => d.symbol).length > 1 ? "s" : ""} proposed — review →
+                </a>
+              )}
+            </div>
+          )}
+
+          {past.length > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs font-medium text-ink-muted">
+                Past runs — {past.length}
+              </summary>
+              <ul className="mt-2 flex flex-col gap-2">
+                {past.map((r) => (
+                  <li key={r.id} className="rounded-lg bg-page px-3 py-2">
+                    <div className="text-[11px] text-ink-muted">
+                      {dateTime(r.finished_at ?? r.started_at)}
+                      {r.status === "error" ? " · failed" : ""}
+                    </div>
+                    <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-ink-2">
+                      {r.status === "error" ? (r.error ?? "Run failed.") : (r.report ?? "—")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </Card>
-      ))}
+        );
+      })}
 
       {autos !== null && autos.length === 0 && !signedOut && (
         <p className="text-sm text-ink-muted">

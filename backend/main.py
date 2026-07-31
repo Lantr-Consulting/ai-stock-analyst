@@ -279,15 +279,16 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 "estValue": round(qty * price, 2), "rationale": o.get("why", rationale),
                 "strategyVersion": row["strategy_version"], "evidence": [],
                 "safeguards": checks, "status": "proposed" if ok else "blocked", "runId": run_id})
-        if automation:
-            thread_id = automation.get("thread_id") or db.thread_for_title(user["id"], automation["title"])
-            summary = rationale or "Run complete — no findings this time."
-            if orders:
-                summary += "\n\nProposed: " + ", ".join(
-                    f"{o.get('action','buy')} {o.get('qty')} {o.get('symbol')}" for o in orders
-                ) + " — review them on the Proposals page."
-            db.add_message(user["id"], "agent", f"[{automation['title']}] {summary}", thread_id)
-        db.finish_run(user["id"], run_id, "done")
+        summary = rationale or "Run complete — no findings this time."
+        if orders:
+            summary += "\n\nProposed: " + ", ".join(
+                f"{o.get('action','buy')} {o.get('qty')} {o.get('symbol')}" for o in orders
+            )
+        # Chat-initiated research reports back into its conversation; scheduled
+        # automations present their results on the Automations page instead.
+        if automation and automation.get("thread_id"):
+            db.add_message(user["id"], "agent", summary, automation["thread_id"])
+        db.finish_run(user["id"], run_id, "done", report=summary)
     except Exception as exc:
         db.finish_run(user["id"], run_id, "error", str(exc)[:300])
     finally:

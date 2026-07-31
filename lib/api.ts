@@ -129,6 +129,8 @@ export interface ResearchRun {
   status: "running" | "done" | "error";
   steer: string[];
   error?: string | null;
+  report?: string | null;
+  automation_id?: string | null;
   started_at: string;
   finished_at?: string | null;
   decisions: Decision[];

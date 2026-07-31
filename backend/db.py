@@ -219,10 +219,11 @@ def create_run(user_id: str) -> dict[str, Any]:
                  extra_headers={"Prefer": "return=representation"})[0]
 
 
-def finish_run(user_id: str, run_id: str, status: str, error: str | None = None) -> None:
+def finish_run(user_id: str, run_id: str, status: str, error: str | None = None,
+               report: str | None = None) -> None:
     _rest("PATCH", "research_runs",
           params={"id": f"eq.{run_id}", "user_id": f"eq.{user_id}"},
-          json={"status": status, "error": error,
+          json={"status": status, "error": error, "report": report,
                 "finished_at": datetime.now(timezone.utc).isoformat()})
 
 
