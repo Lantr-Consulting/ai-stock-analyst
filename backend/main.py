@@ -227,7 +227,7 @@ def decisions(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
 _research_in_flight: set[str] = set()
 
 
-def _do_research(user: dict, row: dict, run_id: str) -> None:
+def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = None) -> None:
     keys = _keys_for(row)
     strategy = {**row["strategy"], "version": row["strategy_version"]}
     safeguards = {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})}
@@ -241,7 +241,10 @@ def _do_research(user: dict, row: dict, run_id: str) -> None:
                 lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
             elif r.get("symbol") and r["status"] in ("approved", "filled"):
                 lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
-        plan = research_agent.run_research_cycle(strategy, safeguards, keys, lessons[:12])
+        plan = research_agent.run_research_cycle(
+            strategy, safeguards, keys, lessons[:12],
+            mission=automation["prompt"] if automation else None,
+        )
         db.supersede_pending(user["id"])
         evidence = plan.get("evidence", [])
         rationale = plan.get("rationale", "")
@@ -276,6 +279,14 @@ def _do_research(user: dict, row: dict, run_id: str) -> None:
                 "estValue": round(qty * price, 2), "rationale": o.get("why", rationale),
                 "strategyVersion": row["strategy_version"], "evidence": [],
                 "safeguards": checks, "status": "proposed" if ok else "blocked", "runId": run_id})
+        if automation:
+            thread_id = db.thread_for_title(user["id"], automation["title"])
+            summary = rationale or "Run complete — no findings this time."
+            if orders:
+                summary += "\n\nProposed: " + ", ".join(
+                    f"{o.get('action','buy')} {o.get('qty')} {o.get('symbol')}" for o in orders
+                ) + " — review them on the Proposals page."
+            db.add_message(user["id"], "agent", f"[{automation['title']}] {summary}", thread_id)
         db.finish_run(user["id"], run_id, "done")
     except Exception as exc:
         db.finish_run(user["id"], run_id, "error", str(exc)[:300])
@@ -401,6 +412,112 @@ def reject(
     if req.reason and req.reason.strip():
         fields["feedback"] = req.reason.strip()[:500]
     return db.update_decision(user["id"], decision_id, fields)
+
+
+# ---------------------------------------------------------------------------
+# Automations
+# ---------------------------------------------------------------------------
+
+class AutomationRequest(BaseModel):
+    title: str
+    prompt: str
+    cadence: str = "manual"  # manual | daily | weekly | market_open
+    hourUtc: int = 21
+
+
+@app.get("/automations")
+def automations(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
+    return db.list_automations(user["id"])
+
+
+@app.post("/automations")
+def create_automation(req: AutomationRequest, user: dict = Depends(current_user)) -> dict[str, Any]:
+    if req.cadence not in ("manual", "daily", "weekly", "market_open"):
+        raise HTTPException(status_code=400, detail="bad cadence")
+    if not req.title.strip() or not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="title and prompt required")
+    return db.create_automation(user["id"], req.title.strip(), req.prompt.strip(),
+                                req.cadence, max(0, min(23, req.hourUtc)))
+
+
+class AutomationPatch(BaseModel):
+    enabled: bool | None = None
+
+
+@app.patch("/automations/{auto_id}")
+def patch_automation(auto_id: str, req: AutomationPatch, user: dict = Depends(current_user)) -> dict[str, Any]:
+    fields = {}
+    if req.enabled is not None:
+        fields["enabled"] = req.enabled
+    updated = db.update_automation(user["id"], auto_id, fields)
+    if not updated:
+        raise HTTPException(status_code=404, detail="not found")
+    return updated
+
+
+@app.delete("/automations/{auto_id}")
+def remove_automation(auto_id: str, user: dict = Depends(current_user)) -> dict[str, Any]:
+    db.delete_automation(user["id"], auto_id)
+    return {"ok": True}
+
+
+def _start_automation_run(user_id: str, email: str, auto: dict) -> bool:
+    row = db.get_agent(user_id)
+    if not row or not row["activated"] or row["paused"] or user_id in _research_in_flight:
+        return False
+    run = db.create_run(user_id)
+    db._rest("PATCH", "research_runs", params={"id": f"eq.{run['id']}"},
+             json={"automation_id": auto["id"]})
+    _research_in_flight.add(user_id)
+    threading.Thread(target=_do_research,
+                     args=({"id": user_id, "email": email}, row, run["id"], auto),
+                     daemon=True).start()
+    return True
+
+
+@app.post("/automations/{auto_id}/run")
+def run_automation(auto_id: str, user: dict = Depends(current_user)) -> dict[str, Any]:
+    autos = [a for a in db.list_automations(user["id"]) if a["id"] == auto_id]
+    if not autos:
+        raise HTTPException(status_code=404, detail="not found")
+    if not _start_automation_run(user["id"], user["email"], autos[0]):
+        raise HTTPException(status_code=409, detail="agent inactive, paused, or already researching")
+    db.update_automation(user["id"], auto_id, {"last_run_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()})
+    return {"ok": True}
+
+
+def _automation_due(auto: dict, now) -> bool:
+    if not auto["enabled"] or auto["cadence"] == "manual":
+        return False
+    last = auto.get("last_run_at")
+    if last:
+        from datetime import datetime as _dt
+        last_dt = _dt.fromisoformat(last.replace("Z", "+00:00"))
+        if (now - last_dt).total_seconds() < 3600 * 20:
+            return False
+    if auto["cadence"] == "daily":
+        return now.hour == auto["hour_utc"]
+    if auto["cadence"] == "weekly":
+        return now.weekday() == 4 and now.hour == auto["hour_utc"]
+    if auto["cadence"] == "market_open":
+        return now.weekday() < 5 and now.hour == 13 and now.minute >= 30
+    return False
+
+
+def _scheduler_loop() -> None:
+    from datetime import datetime as _dt, timezone as _tz
+    while True:
+        try:
+            now = _dt.now(_tz.utc)
+            for auto in db.list_automations():
+                if _automation_due(auto, now) and db.claim_automation(auto):
+                    _start_automation_run(auto["user_id"], "", auto)
+        except Exception:
+            pass
+        time.sleep(60)
+
+
+threading.Thread(target=_scheduler_loop, daemon=True).start()
 
 
 # ---------------------------------------------------------------------------

@@ -262,3 +262,51 @@ def rename_thread(user_id: str, thread_id: str, title: str) -> None:
     _rest("PATCH", "threads",
           params={"id": f"eq.{thread_id}", "user_id": f"eq.{user_id}"},
           json={"title": title[:80]})
+
+
+# ---------------------------------------------------------------------------
+# Automations
+# ---------------------------------------------------------------------------
+
+def create_automation(user_id: str, title: str, prompt: str, cadence: str, hour_utc: int) -> dict[str, Any]:
+    row = {"id": f"auto-{uuid.uuid4().hex[:8]}", "user_id": user_id, "title": title[:80],
+           "prompt": prompt[:2000], "cadence": cadence, "hour_utc": hour_utc}
+    return _rest("POST", "automations", json=row,
+                 extra_headers={"Prefer": "return=representation"})[0]
+
+
+def list_automations(user_id: str | None = None) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {"order": "created_at.desc"}
+    if user_id:
+        params["user_id"] = f"eq.{user_id}"
+    return _rest("GET", "automations", params=params)
+
+
+def update_automation(user_id: str, auto_id: str, fields: dict[str, Any]) -> dict[str, Any] | None:
+    rows = _rest("PATCH", "automations",
+                 params={"id": f"eq.{auto_id}", "user_id": f"eq.{user_id}"},
+                 json=fields, extra_headers={"Prefer": "return=representation"})
+    return rows[0] if rows else None
+
+
+def delete_automation(user_id: str, auto_id: str) -> None:
+    _rest("DELETE", "automations",
+          params={"id": f"eq.{auto_id}", "user_id": f"eq.{user_id}"})
+
+
+def claim_automation(auto: dict[str, Any]) -> bool:
+    """CAS on last_run_at so only one worker runs a due automation."""
+    prev = auto.get("last_run_at")
+    params = {"id": f"eq.{auto['id']}"}
+    params["last_run_at"] = "is.null" if prev is None else f"eq.{prev}"
+    rows = _rest("PATCH", "automations", params=params,
+                 json={"last_run_at": datetime.now(timezone.utc).isoformat()},
+                 extra_headers={"Prefer": "return=representation"})
+    return bool(rows)
+
+
+def thread_for_title(user_id: str, title: str) -> str:
+    for t in list_threads(user_id):
+        if t["title"] == title:
+            return t["id"]
+    return create_thread(user_id, title)["id"]

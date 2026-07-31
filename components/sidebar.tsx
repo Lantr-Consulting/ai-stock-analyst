@@ -70,6 +70,16 @@ const NAV = [
     ),
   },
   {
+    href: "/automations",
+    label: "Automations",
+    icon: (
+      <Icon>
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 15.5 14" />
+      </Icon>
+    ),
+  },
+  {
     href: "/activity",
     label: "Activity",
     icon: (

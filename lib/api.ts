@@ -202,3 +202,42 @@ export async function askAnalyst(
 export function getChatHistory(threadId?: string): Promise<ChatMessage[]> {
   return req(`/chat/history${threadId ? `?threadId=${threadId}` : ""}`);
 }
+
+// ---------------------------------------------------------------------------
+// Automations
+// ---------------------------------------------------------------------------
+
+export interface Automation {
+  id: string;
+  title: string;
+  prompt: string;
+  cadence: "manual" | "daily" | "weekly" | "market_open";
+  hour_utc: number;
+  enabled: boolean;
+  last_run_at?: string | null;
+}
+
+export function getAutomations(): Promise<Automation[]> {
+  return req("/automations");
+}
+
+export function createAutomation(a: {
+  title: string;
+  prompt: string;
+  cadence: string;
+  hourUtc: number;
+}): Promise<Automation> {
+  return req("/automations", { method: "POST", body: JSON.stringify(a) });
+}
+
+export function toggleAutomation(id: string, enabled: boolean): Promise<Automation> {
+  return req(`/automations/${id}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
+}
+
+export function deleteAutomation(id: string): Promise<{ ok: boolean }> {
+  return req(`/automations/${id}`, { method: "DELETE" });
+}
+
+export function runAutomation(id: string): Promise<{ ok: boolean }> {
+  return req(`/automations/${id}/run`, { method: "POST", body: "{}" });
+}
