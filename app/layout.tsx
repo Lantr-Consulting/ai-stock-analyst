@@ -37,7 +37,7 @@ export default function RootLayout({
         <div className="flex min-w-0 flex-1 flex-col">
           <SimulatedBanner />
           <MobileNav />
-          <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-5 py-8">
+          <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8">
             {children}
           </main>
         </div>
