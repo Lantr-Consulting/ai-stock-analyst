@@ -427,6 +427,37 @@ def reject(
 
 
 # ---------------------------------------------------------------------------
+# Market discovery (public market data — no account information)
+# ---------------------------------------------------------------------------
+
+@app.get("/market/overview")
+def market_overview() -> dict[str, Any]:
+    return broker.market_movers()
+
+
+@app.get("/market/ticker/{symbol}")
+def market_ticker(symbol: str) -> dict[str, Any]:
+    sym = symbol.upper().strip()
+    info = broker.asset_info(sym)
+    if not info:
+        raise HTTPException(status_code=404, detail=f"{sym} is not a known US-listed asset")
+    out: dict[str, Any] = {"info": info}
+    try:
+        out["indicators"] = broker.indicators(sym)
+    except Exception:
+        out["indicators"] = None
+    try:
+        out["bars"] = broker.daily_bars(sym, 60)
+    except Exception:
+        out["bars"] = []
+    try:
+        out["news"] = broker.recent_news([sym], 6)
+    except Exception:
+        out["news"] = []
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Automations
 # ---------------------------------------------------------------------------
 

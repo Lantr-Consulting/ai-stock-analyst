@@ -246,3 +246,41 @@ export function deleteAutomation(id: string): Promise<{ ok: boolean }> {
 export function runAutomation(id: string): Promise<{ ok: boolean }> {
   return req(`/automations/${id}/run`, { method: "POST", body: "{}" });
 }
+
+// ---------------------------------------------------------------------------
+// Market discovery (public)
+// ---------------------------------------------------------------------------
+
+export interface Mover {
+  symbol: string;
+  pctChange: number;
+  price: number;
+}
+
+export function getMarketOverview(): Promise<{
+  gainers?: Mover[];
+  losers?: Mover[];
+  mostActive?: { symbol: string; volume: number }[];
+}> {
+  return req("/market/overview");
+}
+
+export interface TickerDetail {
+  info: { symbol: string; name: string; exchange: string; tradable: boolean };
+  indicators: {
+    price: number;
+    sma20?: number | null;
+    sma50?: number | null;
+    rsi14?: number;
+    annualizedVolPct?: number;
+    maxDrawdown60dPct?: number;
+    return30dPct?: number | null;
+    error?: string;
+  } | null;
+  bars: { date: string; close: number }[];
+  news: { headline: string; source: string; at: string; summary: string }[];
+}
+
+export function getTicker(symbol: string): Promise<TickerDetail> {
+  return req(`/market/ticker/${encodeURIComponent(symbol)}`);
+}

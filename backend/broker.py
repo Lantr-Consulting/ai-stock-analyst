@@ -267,3 +267,16 @@ def market_movers(keys: Keys = None) -> dict[str, Any]:
     if r.status_code == 200:
         out["mostActive"] = [{"symbol": m["symbol"], "volume": m["volume"]} for m in r.json().get("most_actives", [])]
     return out
+
+
+def asset_info(symbol: str, keys: Keys = None) -> dict[str, Any] | None:
+    try:
+        a = trading(keys).get_asset(symbol)
+    except Exception:
+        return None
+    return {
+        "symbol": a.symbol,
+        "name": a.name,
+        "exchange": str(getattr(a, "exchange", "")).split(".")[-1],
+        "tradable": bool(a.tradable),
+    }
