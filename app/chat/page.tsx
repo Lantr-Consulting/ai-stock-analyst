@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { askAnalyst } from "@/lib/api";
 import { dateTime } from "@/lib/format";
-import { chatThread } from "@/lib/mock";
 import type { ChatMessage } from "@/lib/types";
 
 const SUGGESTED = [
@@ -17,7 +16,7 @@ const OFFLINE_REPLY =
   "I can't reach my backend right now, so I can't answer from my decision records. Start the backend (backend/ on port 8000) or check NEXT_PUBLIC_API_URL, then ask me again.";
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>(chatThread);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
 
@@ -65,6 +64,12 @@ export default function ChatPage() {
       </header>
 
       <div className="flex flex-col gap-4">
+        {messages.length === 0 && !thinking && (
+          <div className="rounded-xl border border-dashed border-hairline px-5 py-8 text-center text-sm text-ink-muted">
+            Ask about the live paper account — positions, cash, any recorded
+            decision, or what the agent is watching. Try a suggestion below.
+          </div>
+        )}
         {messages.map((m) => (
           <div
             key={m.id}
@@ -130,8 +135,8 @@ export default function ChatPage() {
           </button>
         </form>
         <p className="mt-2 text-xs text-ink-muted">
-          Answers are grounded in the sample account records; your live records
-          arrive with the database in Milestone 5.
+          Answers are grounded in the live paper account and the agent&apos;s
+          recorded decisions. Simulated — not financial advice.
         </p>
       </div>
     </div>

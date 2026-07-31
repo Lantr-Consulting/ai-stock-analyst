@@ -1,54 +1,88 @@
 import type {
   ChatMessage,
+  Decision,
   InvestorProfile,
+  PortfolioSnapshot,
   Strategy,
+  ValuePoint,
 } from "./types";
-import { decisions, portfolio, strategy as mockStrategy, profile as mockProfile } from "./mock";
 
 // The deployed backend URL is injected at build time; localhost is the
-// Milestone 3 default for local development.
+// default for local development.
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
+
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio (live paper account, Milestone 4)
+// ---------------------------------------------------------------------------
+
+export interface LivePortfolio extends PortfolioSnapshot {
+  equity: number;
+  history: ValuePoint[];
+}
+
+export function getPortfolio(): Promise<LivePortfolio> {
+  return req("/portfolio");
+}
+
+// ---------------------------------------------------------------------------
+// Decisions: research -> propose -> approve/reject
+// ---------------------------------------------------------------------------
+
+export function getDecisions(): Promise<Decision[]> {
+  return req("/decisions");
+}
+
+export function runResearchCycle(): Promise<Decision> {
+  return req("/research-cycle", { method: "POST", body: "{}" });
+}
+
+export function approveDecision(id: string): Promise<Decision> {
+  return req(`/decisions/${id}/approve`, { method: "POST", body: "{}" });
+}
+
+export function rejectDecision(id: string): Promise<Decision> {
+  return req(`/decisions/${id}/reject`, { method: "POST", body: "{}" });
+}
+
+// ---------------------------------------------------------------------------
+// Brain (Milestone 3)
+// ---------------------------------------------------------------------------
 
 export interface InterpretedUpdate {
   profile: Omit<InvestorProfile, "version" | "updatedAt" | "rawInstructions">;
   strategy: Omit<Strategy, "version" | "updatedAt">;
 }
 
-export async function interpretProfile(
+export function interpretProfile(
   instructions: string,
   current: { profile: InvestorProfile; strategy: Strategy }
 ): Promise<InterpretedUpdate> {
-  const res = await fetch(`${API_URL}/interpret-profile`, {
+  return req("/interpret-profile", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       instructions,
       profile: current.profile,
       strategy: current.strategy,
     }),
   });
-  if (!res.ok) throw new Error(`interpret-profile failed: ${res.status}`);
-  return res.json();
 }
 
 export async function askAnalyst(messages: ChatMessage[]): Promise<string> {
-  const res = await fetch(`${API_URL}/chat`, {
+  const data = await req<{ text: string }>("/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, text: m.text })),
-      // Milestone 3: account state is still the sample data. Milestone 5
-      // replaces this with the signed-in user's records from the database.
-      context: {
-        profile: mockProfile,
-        strategy: mockStrategy,
-        portfolio,
-        decisions,
-      },
     }),
   });
-  if (!res.ok) throw new Error(`chat failed: ${res.status}`);
-  const data = (await res.json()) as { text: string };
   return data.text;
 }

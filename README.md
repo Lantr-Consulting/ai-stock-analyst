@@ -9,9 +9,11 @@ manages a **paper-trading portfolio** within deterministic safeguards.
 
 A Lantr sample project, built in the same order a student builds theirs.
 
-## Status: Milestone 1 — First Ship
+## Status: Milestone 4 — Hands
 
-The frontend is live with sample data. Six screens:
+The agent researches with live market data and manages a real Alpaca paper
+account: LangChain tool loop (prices, bars, news, portfolio), a deterministic
+risk engine, and the propose → approve → order → fill lifecycle. Six screens:
 
 - **Dashboard** — portfolio value, allocation, recent decisions, weekly summary
 - **Agent setup** — plain-English instructions → investor profile → strategy preview
@@ -24,10 +26,10 @@ The frontend is live with sample data. Six screens:
 
 | Milestone | What ships |
 |---|---|
-| 1. First Ship | Frontend on Vercel, sample data *(this one)* |
-| 2. Design pass | Visual polish, states, charts |
-| 3. The Brain | Python backend on Railway; Claude turns instructions into a strategy |
-| 4. Hands | LangChain agent + Alpaca tools; risk engine; approval → paper order → fill |
+| 1. First Ship | Frontend on Vercel, sample data ✅ |
+| 2. Design pass | Visual polish, states, charts ✅ |
+| 3. The Brain | Python backend on Railway; the LLM turns instructions into a strategy ✅ |
+| 4. Hands | LangChain agent + Alpaca tools; risk engine; approval → paper order → fill ✅ *(this one)* |
 | 5. Memory & accounts | Supabase database, sign-in, one agent per user |
 | 6. Always-on | Scheduled research cycles, summaries, notifications |
 | 7. Evals | Committed eval set, LLM-as-judge, measured improvement |

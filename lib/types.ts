@@ -71,9 +71,9 @@ export interface EvidenceItem {
 export interface OrderRecord {
   id: string;
   submittedAt: string;
-  status: "submitted" | "filled" | "cancelled";
-  filledAt?: string;
-  fillPrice?: number;
+  status: string; // Alpaca order status: accepted, new, filled, canceled, …
+  filledAt?: string | null;
+  fillPrice?: number | null;
 }
 
 export interface Decision {
