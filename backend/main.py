@@ -521,8 +521,9 @@ the word "universe", never call any list "approved", and never say a stock \
 can't be considered or traded. Any US-listed name can be researched and \
 proposed. NEVER assert market facts from memory — whether a company is \
 public, its ticker, price, or valuation; your knowledge may be stale. If a \
-fact isn't in the records, say the next research cycle will verify it \
-against the live asset list rather than declaring it true or false.
+fact isn't in the records, USE YOUR LIVE TOOLS — lookup_asset verifies any \
+ticker against the live asset list, get_latest_prices/get_indicators/\
+get_recent_news pull real market data. Verify, then answer; never guess.
 
 If the user expresses a DURABLE preference or instruction that should change \
 how their agent invests (sectors, names to favor/avoid, risk, cadence), end \
@@ -535,6 +536,34 @@ the user this is a simulated learning account.
 
 ACCOUNT STATE:
 """
+
+
+CHAT_TOOLS = [
+    {"type": "function", "function": {"name": "lookup_asset", "description": "Verify whether a symbol is a real, tradable US listing and get its latest price.", "parameters": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}}},
+    {"type": "function", "function": {"name": "get_latest_prices", "description": "Latest trade prices for comma-separated symbols.", "parameters": {"type": "object", "properties": {"symbols": {"type": "string"}}, "required": ["symbols"]}}},
+    {"type": "function", "function": {"name": "get_indicators", "description": "Quant indicators for one symbol: price vs SMA20/50, RSI14, volatility, drawdown, 30-day return.", "parameters": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}}},
+    {"type": "function", "function": {"name": "get_recent_news", "description": "Recent market news for comma-separated symbols.", "parameters": {"type": "object", "properties": {"symbols": {"type": "string"}}, "required": ["symbols"]}}},
+]
+
+
+def _chat_tool(name: str, args: dict, keys) -> str:
+    try:
+        if name == "lookup_asset":
+            sym = str(args["symbol"]).upper()
+            ok, detail = broker.asset_ok(sym, keys)
+            out = {"tradable": ok, "detail": detail}
+            if ok:
+                out["price"] = broker.latest_prices([sym], keys).get(sym)
+            return json.dumps(out)
+        if name == "get_latest_prices":
+            return json.dumps(broker.latest_prices([x.strip().upper() for x in str(args["symbols"]).split(",")], keys))
+        if name == "get_indicators":
+            return json.dumps(broker.indicators(str(args["symbol"]).upper(), keys))
+        if name == "get_recent_news":
+            return json.dumps(broker.recent_news([x.strip().upper() for x in str(args["symbols"]).split(",")], 8, keys))
+        return json.dumps({"error": "unknown tool"})
+    except Exception as e:
+        return json.dumps({"error": str(e)[:200]})
 
 
 class ChatMessage(BaseModel):
@@ -570,15 +599,31 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
         {"role": "user" if m.role == "user" else "assistant", "content": m.text}
         for m in req.messages[-12:]
     ]
-    completion = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": CHAT_SYSTEM + json.dumps(context)},
-            *history,
-        ],
-        temperature=0.5,
-    )
-    text = completion.choices[0].message.content or ""
+    msgs = [
+        {"role": "system", "content": CHAT_SYSTEM + json.dumps(context)},
+        *history,
+    ]
+    text = ""
+    for _ in range(4):
+        completion = client.chat.completions.create(
+            model=MODEL, messages=msgs, tools=CHAT_TOOLS, temperature=0.5
+        )
+        msg = completion.choices[0].message
+        if msg.tool_calls:
+            msgs.append({"role": "assistant", "content": msg.content or "",
+                         "tool_calls": [{"id": t.id, "type": "function",
+                                         "function": {"name": t.function.name, "arguments": t.function.arguments}}
+                                        for t in msg.tool_calls]})
+            for t in msg.tool_calls:
+                try:
+                    targs = json.loads(t.function.arguments or "{}")
+                except Exception:
+                    targs = {}
+                msgs.append({"role": "tool", "tool_call_id": t.id,
+                             "content": _chat_tool(t.function.name, targs, keys)})
+            continue
+        text = msg.content or ""
+        break
     strategy_updated = False
     if "UPDATE_STRATEGY:" in text:
         instruction = text.rsplit("UPDATE_STRATEGY:", 1)[1].strip()
