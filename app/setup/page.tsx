@@ -145,28 +145,64 @@ export default function SetupPage() {
               builds your profile from your own words.
             </p>
           ) : (
-            <dl className="flex flex-col gap-3 text-sm">
-              <Row label="Goals" value={v.profile.goals ?? ""} />
-              <Row
-                label="Risk tolerance"
-                value={
-                  v.profile.riskTolerance
-                    ? v.profile.riskTolerance[0].toUpperCase() +
-                      v.profile.riskTolerance.slice(1)
-                    : "—"
-                }
-              />
-              <Row label="Time horizon" value={v.profile.timeHorizon ?? "—"} />
-              <Row
-                label="Preferred sectors"
-                value={(v.profile.preferredSectors ?? []).join(" · ")}
-              />
-              <Row label="Avoids" value={(v.profile.avoid ?? []).join(" · ")} />
-              <Row
-                label="Trading frequency"
-                value={v.profile.tradingFrequency ?? "—"}
-              />
-            </dl>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm leading-relaxed">{v.profile.goals}</p>
+              <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+                <ProfileStat
+                  label="Risk"
+                  value={
+                    v.profile.riskTolerance
+                      ? v.profile.riskTolerance[0].toUpperCase() +
+                        v.profile.riskTolerance.slice(1)
+                      : "—"
+                  }
+                  tone={
+                    v.profile.riskTolerance === "aggressive"
+                      ? "text-critical"
+                      : v.profile.riskTolerance === "conservative"
+                        ? "text-series-3"
+                        : "text-warning"
+                  }
+                  meter={
+                    v.profile.riskTolerance === "aggressive"
+                      ? 3
+                      : v.profile.riskTolerance === "conservative"
+                        ? 1
+                        : 2
+                  }
+                />
+                <ProfileStat label="Horizon" value={v.profile.timeHorizon ?? "—"} />
+                <ProfileStat label="Cadence" value={v.profile.tradingFrequency ?? "—"} />
+              </div>
+              {(v.profile.preferredSectors ?? []).length > 0 && (
+                <div>
+                  <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                    Leaning into
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(v.profile.preferredSectors ?? []).map((x) => (
+                      <span key={x} className="rounded-full bg-series-1/15 px-2.5 py-1 text-xs font-medium text-series-1">
+                        {x}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(v.profile.avoid ?? []).length > 0 && (
+                <div>
+                  <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                    Staying away from
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(v.profile.avoid ?? []).map((x) => (
+                      <span key={x} className="rounded-full bg-critical/15 px-2.5 py-1 text-xs font-medium text-critical">
+                        {x}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {v.rawInstructions.length > 0 && (
             <div className="mt-4 border-t border-hairline pt-3">
@@ -193,21 +229,29 @@ export default function SetupPage() {
           </p>
           {v.strategy.watching?.length > 0 && (
             <div className="mt-4">
-              <div className="text-xs font-medium text-ink-muted">
-                What the agent watches
+              <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                Watching
               </div>
-              <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">
+              <ul className="flex flex-col gap-1.5">
                 {v.strategy.watching.map((w) => (
-                  <li key={w}>{w}</li>
+                  <li key={w} className="flex items-start gap-2 text-sm text-ink-2">
+                    <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-series-1" />
+                    {w}
+                  </li>
                 ))}
               </ul>
             </div>
           )}
           <div className="mt-4">
-            <div className="text-xs font-medium text-ink-muted">Rules</div>
-            <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+              Operating rules
+            </div>
+            <ul className="flex flex-col gap-1.5">
               {v.strategy.rules.map((r) => (
-                <li key={r}>{r}</li>
+                <li key={r} className="flex items-start gap-2 text-sm text-ink-2">
+                  <span aria-hidden className="mt-0.5 font-bold text-accent">✓</span>
+                  {r}
+                </li>
               ))}
             </ul>
           </div>
@@ -391,6 +435,37 @@ function NumField({
         style={{ fontVariantNumeric: "tabular-nums" }}
       />
     </label>
+  );
+}
+
+function ProfileStat({
+  label,
+  value,
+  tone,
+  meter,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  meter?: number;
+}) {
+  return (
+    <div className="rounded-xl bg-page px-3.5 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+        {label}
+      </div>
+      <div className={`mt-0.5 truncate text-sm font-semibold ${tone ?? ""}`}>{value}</div>
+      {meter !== undefined && (
+        <div className="mt-1.5 flex gap-1">
+          {[1, 2, 3].map((i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 rounded-full ${i <= meter ? "bg-accent" : "bg-baseline"}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import type { Decision } from "@/lib/types";
 import { OrderCard } from "@/components/order-card";
+import { ChatMarkdown } from "@/components/chat-markdown";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
 import { useToast } from "@/components/toast";
@@ -35,13 +36,17 @@ export default function ChatPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [pending, setPending] = useState<Decision[]>([]);
+  const [recent, setRecent] = useState<Decision[]>([]);
   const toast = useToast();
 
   // Inline proposals: poll for pending trades and fresh thread messages.
   useEffect(() => {
     const load = () => {
       getDecisions()
-        .then((ds) => setPending(ds.filter((d) => d.status === "proposed")))
+        .then((ds) => {
+          setPending(ds.filter((d) => d.status === "proposed"));
+          setRecent(ds);
+        })
         .catch(() => {});
     };
     load();
@@ -197,6 +202,51 @@ export default function ChatPage() {
             <p className="px-3 text-xs text-ink-muted">No conversations yet.</p>
           )}
         </nav>
+        <div className="mb-1 mt-5 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+          Trades & research
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {recent.slice(0, 10).map((d) => (
+            <a
+              key={d.id}
+              href="/proposals"
+              className="rounded-lg px-3 py-1.5 hover:bg-white/5"
+            >
+              <span className="flex items-center gap-1.5 text-xs">
+                <span
+                  aria-hidden
+                  className={`size-1.5 shrink-0 rounded-full ${
+                    d.status === "filled" || d.status === "approved"
+                      ? "bg-good"
+                      : d.status === "proposed"
+                        ? "animate-pulse bg-accent"
+                        : d.status === "blocked"
+                          ? "bg-critical"
+                          : "bg-baseline"
+                  }`}
+                />
+                <span className="truncate text-ink-2">
+                  {d.symbol
+                    ? `${d.action === "sell" ? "Sell" : "Buy"} ${d.qty} ${d.symbol}`
+                    : d.action === "rebalance"
+                      ? "Portfolio plan"
+                      : "Hold"}
+                </span>
+                <span className="ml-auto shrink-0 text-[10px] text-ink-muted">
+                  {d.status}
+                </span>
+              </span>
+            </a>
+          ))}
+          {recent.length > 0 && (
+            <a
+              href="/proposals"
+              className="px-3 pt-1 text-[11px] font-medium text-series-1 hover:underline"
+            >
+              Full history & evidence →
+            </a>
+          )}
+        </div>
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
@@ -249,13 +299,13 @@ export default function ChatPage() {
             className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
           >
             <div
-              className={`max-w-[85%] whitespace-pre-wrap text-sm leading-relaxed animate-[msg-in_.18s_ease-out] ${
+              className={`max-w-[85%] text-sm leading-relaxed animate-[msg-in_.18s_ease-out] ${
                 m.role === "user"
                   ? "rounded-3xl rounded-br-md bg-accent px-4 py-2.5 font-medium text-black"
                   : "rounded-3xl rounded-bl-md bg-surface px-4.5 py-3 text-ink shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
               }`}
             >
-              {m.text}
+              {m.role === "agent" ? <ChatMarkdown text={m.text} /> : m.text}
             </div>
             <div className="mt-1 px-1 text-[11px] text-ink-muted">
               {m.role === "agent" ? "Analyst · " : ""}
@@ -331,10 +381,7 @@ export default function ChatPage() {
         </form>
         <p className="mt-2 text-xs text-ink-muted">
           Answers are grounded in the live paper account and the agent&apos;s
-          recorded decisions. Simulated — not financial advice.{" "}
-          <a href="/proposals" className="text-series-1 hover:underline">
-            Research history & proposal details →
-          </a>
+          recorded decisions. Simulated — not financial advice.
         </p>
       </div>
       </div>
