@@ -94,18 +94,8 @@ function Wordmark() {
   return (
     <div className="flex items-center gap-2.5 px-3 pb-6 pt-1">
       <span className="flex size-7 items-center justify-center rounded-lg bg-accent">
-        <svg
-          aria-hidden
-          viewBox="0 0 32 32"
-          className="size-4"
-          fill="none"
-          stroke="#000"
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M6 22l7-7 4 4 9-10" />
-        </svg>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/lantr_mark.png" alt="Lantr" className="size-4.5" />
       </span>
       <span>
         <span className="block text-[15px] font-semibold leading-tight tracking-tight">
