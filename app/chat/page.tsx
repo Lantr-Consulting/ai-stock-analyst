@@ -125,7 +125,17 @@ export default function ChatPage() {
     const ask = new URLSearchParams(window.location.search).get("ask");
     if (ask) setDraft(ask);
     getThreads()
-      .then((ts) => {
+      .then(async (ts) => {
+        if (ask) {
+          // A handoff from Discover starts its own fresh conversation.
+          try {
+            const t = await newThread();
+            setThreads([t, ...ts]);
+            setThreadId(t.id);
+            setMessages([]);
+            return;
+          } catch {}
+        }
         setThreads(ts);
         if (ts.length > 0) setThreadId(ts[0].id);
       })

@@ -310,11 +310,11 @@ export default function DiscoverPage() {
                   </div>
                   <Link
                     href={`/chat?ask=${encodeURIComponent(
-                      `Evaluate buying ${buyQty} shares of ${sym} (~${usd(est)}). Research it with live data and propose the order if it makes sense.`
+                      `Research ${sym} in depth — live price action, indicators, and recent news. How does it fit my strategy and current portfolio? Only if it genuinely merits a position, run research to propose an appropriately sized order. (For context, I was looking at roughly ${buyQty} shares ≈ ${usd(est)}.)`
                     )}`}
                     className="btn-primary w-full px-4 py-3 text-sm"
                   >
-                    Send to analyst
+                    Research with analyst
                   </Link>
                   {canWatch && !watchlist.includes(sym) && (
                     <button onClick={() => addToWatchlist(sym)} className="btn-ghost w-full px-4 py-2.5 text-sm">
