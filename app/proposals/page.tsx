@@ -401,18 +401,28 @@ function ProposalCard({
       : `${d.action === "buy" ? "Buy" : d.action === "sell" ? "Sell" : "Rebalance"} ${d.qty ?? ""} ${d.symbol ?? ""}`.trim();
 
   return (
-    <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <Card className="!p-0 overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline bg-surface-2 px-5 py-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+            <h3 className="text-lg font-bold tracking-tight">{title}</h3>
             <StatusBadge status={d.status} />
           </div>
           <div className="mt-0.5 text-xs text-ink-muted">
             {dateTime(d.createdAt)} · strategy v{d.strategyVersion}
-            {d.estValue ? ` · est. ${usd(d.estValue)}` : ""}
           </div>
         </div>
+        {d.estValue ? (
+          <div className="text-right">
+            <div
+              className="text-lg font-bold tracking-tight"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {usd(d.estValue)}
+            </div>
+            <div className="text-[11px] text-ink-muted">estimated</div>
+          </div>
+        ) : null}
         {d.status === "proposed" && onResolve && (
           <div className="flex gap-2">
             <button
@@ -458,6 +468,7 @@ function ProposalCard({
         </form>
       )}
 
+      <div className="px-5 pb-5">
       <p className="mt-3 text-sm leading-relaxed text-ink-2">{d.rationale}</p>
 
       {d.status === "rejected" && d.feedback && (
@@ -498,7 +509,7 @@ function ProposalCard({
       )}
 
       {d.order && (
-        <div className="mt-4 rounded-lg border border-hairline bg-page px-3 py-2 text-sm text-ink-2">
+        <div className="mt-4 rounded-lg bg-page px-3 py-2 text-sm text-ink-2">
           Paper order <span className="font-medium">{d.order.id.slice(0, 8)}</span>{" "}
           {d.order.status}
           {d.order.fillPrice ? ` @ ${usd(d.order.fillPrice)}` : ""} ·{" "}
@@ -511,6 +522,7 @@ function ProposalCard({
           )}
         </div>
       )}
+      </div>
     </Card>
   );
 }

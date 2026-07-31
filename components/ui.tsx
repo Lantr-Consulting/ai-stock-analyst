@@ -76,10 +76,10 @@ export function StatTile({
 }
 
 const STATUS_STYLES: Record<DecisionStatus, { label: string; cls: string }> = {
-  proposed: { label: "Awaiting approval", cls: "bg-series-1/10 text-series-1" },
+  proposed: { label: "Awaiting approval", cls: "bg-accent/15 text-accent" },
   approved: { label: "Approved", cls: "bg-good/10 text-delta-up dark:text-good" },
   filled: { label: "Filled", cls: "bg-good/10 text-delta-up dark:text-good" },
-  rejected: { label: "Rejected", cls: "bg-ink/5 text-ink-2 dark:bg-white/10" },
+  rejected: { label: "Rejected", cls: "bg-white/10 text-ink-2" },
   blocked: { label: "Blocked by safeguard", cls: "bg-critical/10 text-critical" },
 };
 
@@ -97,7 +97,7 @@ export function StatusBadge({ status }: { status: DecisionStatus }) {
 export function SafeguardList({ checks }: { checks: SafeguardCheck[] }) {
   if (checks.length === 0) return null;
   return (
-    <ul className="flex flex-col gap-1.5">
+    <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
       {checks.map((c) => (
         <li key={c.name} className="flex items-start gap-2 text-sm">
           <span
