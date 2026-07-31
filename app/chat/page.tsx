@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { askAnalyst, getChatHistory, getThreads, isSignedOut, newThread, type Thread } from "@/lib/api";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
+import { useToast } from "@/components/toast";
 
 const SUGGESTED = [
   "What are you watching right now?",
@@ -21,6 +22,7 @@ export default function ChatPage() {
   const [thinking, setThinking] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     getThreads()
@@ -64,6 +66,7 @@ export default function ChatPage() {
     try {
       const res = await askAnalyst(thread, threadId ?? undefined);
       reply = res.text;
+      if (res.strategyUpdated) toast("success", "Strategy updated from this conversation.");
       if (!threadId) {
         setThreadId(res.threadId);
         getThreads().then(setThreads).catch(() => {});

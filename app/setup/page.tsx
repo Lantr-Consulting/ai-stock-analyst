@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { profile as sampleProfile, strategy as sampleStrategy } from "@/lib/mock";
+import { useToast } from "@/components/toast";
 
 type View = {
   profile: Me["profile"];
@@ -37,6 +38,7 @@ export default function SetupPage() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [updated, setUpdated] = useState(false);
+  const toast = useToast();
 
   const [me, setMe] = useState<Me | null>(null);
 
@@ -70,6 +72,7 @@ export default function SetupPage() {
       setNote(
         "Saved — this is now the strategy your agent researches with. Review how it interpreted you below."
       );
+      toast("success", "Profile updated — your agent now researches with the new strategy.");
     } catch (e) {
       setNote(
         isSignedOut(e)
@@ -240,6 +243,7 @@ function ActivateCard({
   ready: boolean;
   onActivated: () => void;
 }) {
+  const toast = useToast();
   const [universe, setUniverse] = useState(initialUniverse);
   const [addSym, setAddSym] = useState("");
   const [sg, setSg] = useState({
@@ -260,6 +264,7 @@ function ActivateCard({
       await activateAgent();
       setDone(true);
       onActivated();
+      toast("success", "Agent activated — run your first research cycle from Proposals.");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Activation failed — try again.");
     }

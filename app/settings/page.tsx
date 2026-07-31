@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getMe, isSignedOut, setAlpacaKeys, updateSettings } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { safeguards as initial } from "@/lib/mock";
+import { useToast } from "@/components/toast";
 
 function BrokerageCard() {
   const [state, setState] = useState<"loading" | "signedOut" | "connected" | "shared">(
@@ -100,6 +101,7 @@ export default function SettingsPage() {
   const [live, setLive] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     getMe()
@@ -132,8 +134,12 @@ export default function SettingsPage() {
     try {
       await updateSettings(fields);
       setSaveNote("Saved — the risk engine now enforces these values.");
+      toast("success", fields.paused !== undefined
+        ? fields.paused ? "Agent paused — pending proposals stay put, nothing new runs." : "Agent resumed."
+        : "Safeguards saved — enforced on every order from now on.");
     } catch {
       setSaveNote("Couldn't save — sign in and try again.");
+      toast("error", "Couldn't save settings — sign in and try again.");
     }
     setSaving(false);
   }

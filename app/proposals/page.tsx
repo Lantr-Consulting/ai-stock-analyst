@@ -15,6 +15,7 @@ import {
 import { Card, SafeguardList, StatusBadge } from "@/components/ui";
 import { dateTime, usd } from "@/lib/format";
 import { decisions as mockDecisions } from "@/lib/mock";
+import { useToast } from "@/components/toast";
 import type { Decision } from "@/lib/types";
 
 export default function ProposalsPage() {
@@ -24,6 +25,7 @@ export default function ProposalsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [runs, setRuns] = useState<ResearchRun[]>([]);
+  const toast = useToast();
   const [steerText, setSteerText] = useState("");
   const offline = status !== "live";
   const activeRun = runs.find((r) => r.status === "running");
@@ -42,6 +44,12 @@ export default function ProposalsPage() {
               done.status === "error"
                 ? `Research run failed: ${done.error ?? "unknown error"}`
                 : "Research complete — the plan and proposals are below."
+            );
+            toast(
+              done.status === "error" ? "error" : "success",
+              done.status === "error"
+                ? "Research run failed — see details on the page."
+                : "Research complete — new proposals are ready."
             );
           }
         })
@@ -80,6 +88,7 @@ export default function ProposalsPage() {
       const rs = await getResearchRuns();
       setRuns(rs);
       setNote("Research started — it keeps running even if you leave this page.");
+      toast("info", "Research started — the agent is reading the market now.");
     } catch (e) {
       setResearching(false);
       setNote(
@@ -94,6 +103,21 @@ export default function ProposalsPage() {
 
   async function resolve(id: string, action: "approve" | "reject", reason?: string) {
     setBusyId(id);
+    const before = decisions;
+    // Optimistic: reflect the action instantly, reconcile with the server after.
+    setDecisions((prev) =>
+      (prev ?? []).map((d) =>
+        d.id === id
+          ? { ...d, status: action === "approve" ? "approved" : "rejected", feedback: reason ?? d.feedback }
+          : d
+      )
+    );
+    toast(
+      "info",
+      action === "approve"
+        ? "Approved — submitting the order to your paper account…"
+        : "Rejected — the agent will factor this into future research."
+    );
     try {
       const updated =
         action === "approve"
@@ -102,8 +126,19 @@ export default function ProposalsPage() {
       setDecisions((prev) =>
         (prev ?? []).map((d) => (d.id === id ? updated : d))
       );
+      if (action === "approve") {
+        toast(
+          updated.status === "blocked" ? "error" : "success",
+          updated.status === "filled"
+            ? `Order filled${updated.order?.fillPrice ? ` @ $${updated.order.fillPrice}` : ""}.`
+            : updated.status === "blocked"
+              ? "Order blocked — conditions changed since the proposal. See the safeguard checks."
+              : "Order accepted by Alpaca — it fills when the market opens."
+        );
+      }
     } catch {
-      setNote(`Couldn't ${action} — is the backend reachable?`);
+      setDecisions(before);
+      toast("error", `Couldn't ${action} — check your connection and try again.`);
     }
     setBusyId(null);
   }
@@ -164,7 +199,7 @@ export default function ProposalsPage() {
               if (!steerText.trim()) return;
               try {
                 const r = await steerRun(activeRun.id, steerText.trim());
-                setNote(r.note);
+                toast("success", r.note);
                 setSteerText("");
               } catch {
                 setNote("Couldn't save steering — try again.");
