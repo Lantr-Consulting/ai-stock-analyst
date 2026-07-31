@@ -102,7 +102,7 @@ export default function ProposalsPage() {
     }
   }
 
-  async function resolve(id: string, action: "approve" | "reject", reason?: string) {
+  async function resolve(id: string, action: "approve" | "reject", reason?: string, qty?: number) {
     setBusyId(id);
     const before = decisions;
     // Optimistic: reflect the action instantly, reconcile with the server after.
@@ -122,7 +122,7 @@ export default function ProposalsPage() {
     try {
       const updated =
         action === "approve"
-          ? await approveDecision(id)
+          ? await approveDecision(id, qty)
           : await rejectDecision(id, reason);
       setDecisions((prev) =>
         (prev ?? []).map((d) => (d.id === id ? updated : d))
@@ -312,7 +312,7 @@ export default function ProposalsPage() {
           key={d.id}
           decision={d}
           busy={busyId === d.id}
-          onResolve={offline ? undefined : (a, r) => resolve(d.id, a, r)}
+          onResolve={offline ? undefined : (a, r, q) => resolve(d.id, a, r, q)}
         />
       ))}
 
@@ -391,137 +391,201 @@ function ProposalCard({
 }: {
   decision: Decision;
   busy: boolean;
-  onResolve?: (action: "approve" | "reject", reason?: string) => void;
+  onResolve?: (action: "approve" | "reject", reason?: string, qty?: number) => void;
 }) {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
-  const title =
-    d.action === "hold" || d.action === "no_action" || !d.symbol
-      ? "Hold — no action"
-      : `${d.action === "buy" ? "Buy" : d.action === "sell" ? "Sell" : "Rebalance"} ${d.qty ?? ""} ${d.symbol ?? ""}`.trim();
+  const proposedQty = Math.max(1, Math.round(d.qty ?? 1));
+  const [qty, setQty] = useState(proposedQty);
+  const isPending = d.status === "proposed" && !!onResolve;
+  const price = d.order?.fillPrice ?? (d.estValue && d.qty ? d.estValue / d.qty : 0);
+  const est = (isPending ? qty : (d.qty ?? 0)) * price;
+  const passed = d.safeguards.filter((c) => c.status === "pass").length;
+
+  if (!d.symbol) {
+    return (
+      <Card className="!p-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline bg-surface-2 px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-lg font-bold tracking-tight">
+              {d.action === "rebalance" ? "Portfolio plan" : "Hold — no action"}
+            </h3>
+            <StatusBadge status={d.status} />
+          </div>
+          <span className="text-xs text-ink-muted">{dateTime(d.createdAt)}</span>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-sm leading-relaxed text-ink-2">{d.rationale}</p>
+          {d.evidence.length > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs font-medium text-ink-muted">
+                Evidence — {d.evidence.length} item{d.evidence.length > 1 ? "s" : ""}
+              </summary>
+              <ul className="mt-2 flex flex-col gap-2">
+                {d.evidence.map((e, i) => (
+                  <li key={i} className="rounded-lg bg-page px-3 py-2 text-sm">
+                    <div className="break-all text-xs text-ink-muted">
+                      {e.source} · {dateTime(e.timestamp)}
+                    </div>
+                    <div className="mt-0.5 break-all text-ink-2">{e.summary}</div>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="!p-0 overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline bg-surface-2 px-5 py-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h3 className="text-lg font-bold tracking-tight">{title}</h3>
-            <StatusBadge status={d.status} />
-          </div>
-          <div className="mt-0.5 text-xs text-ink-muted">
-            {dateTime(d.createdAt)} · strategy v{d.strategyVersion}
-          </div>
+      <div className="border-b border-hairline bg-surface-2 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-bold tracking-tight">
+            {d.action === "sell" ? "Sell" : "Buy"} {d.symbol}
+          </h3>
+          <StatusBadge status={d.status} />
         </div>
-        {d.estValue ? (
-          <div className="text-right">
-            <div
-              className="text-lg font-bold tracking-tight"
+        {d.rationale && (
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-2">
+            {d.rationale}
+          </p>
+        )}
+        <p className="mt-1 text-[11px] text-ink-muted">
+          {dateTime(d.createdAt)} · strategy v{d.strategyVersion}
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 px-5 py-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">Order type</span>
+          <span className="text-ink-2">Market · proposed by your analyst</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">Shares</span>
+          {isPending ? (
+            <input
+              type="number"
+              min={1}
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+              className="w-24 rounded-lg border border-hairline bg-page px-3 py-1.5 text-right text-sm outline-none focus:border-accent"
               style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {usd(d.estValue)}
-            </div>
-            <div className="text-[11px] text-ink-muted">estimated</div>
+            />
+          ) : (
+            <span className="font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {d.qty}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium text-series-1">
+            {d.order?.fillPrice ? "Fill price" : "Market price"}
+          </span>
+          <span className="font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {price ? usd(price) : "—"}
+          </span>
+        </div>
+        <div className="border-t border-hairline pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold">
+              {d.order?.fillPrice ? "Cost" : "Estimated cost"}
+            </span>
+            <span className="text-sm font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {usd(est)}
+            </span>
           </div>
-        ) : null}
-        {d.status === "proposed" && onResolve && (
+          {isPending && qty !== proposedQty && (
+            <p className="mt-1 text-right text-[11px] text-ink-muted">
+              edited from {proposedQty} shares — safeguards re-check at this size
+            </p>
+          )}
+        </div>
+
+        {d.order && (
+          <div className="rounded-lg bg-page px-3 py-2 text-xs text-ink-2">
+            Paper order {d.order.id.slice(0, 8)} · {d.order.status}
+            {d.order.status === "accepted" && " — fills at the next market open"}
+          </div>
+        )}
+
+        {isPending && !rejecting && (
           <div className="flex gap-2">
             <button
-              onClick={() => onResolve("approve")}
+              onClick={() => onResolve!("approve", undefined, qty)}
               disabled={busy}
-              className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
+              className="btn-primary flex-1 px-4 py-3 text-sm"
             >
-              {busy ? "Submitting…" : "Approve"}
+              {busy ? "Submitting…" : "Approve order"}
             </button>
             <button
               onClick={() => setRejecting(true)}
               disabled={busy}
-              className="btn-ghost px-3.5 py-2 text-sm font-medium  disabled:opacity-50 dark:hover:bg-white/5"
+              className="btn-ghost px-4 py-3 text-sm"
             >
               Reject
             </button>
           </div>
         )}
-      </div>
-
-      {rejecting && d.status === "proposed" && onResolve && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onResolve("reject", reason.trim() || undefined);
-          }}
-          className="mt-3 flex gap-2"
-        >
-          <input
-            autoFocus
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Why? (optional — the agent learns from this)"
-            className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-full bg-critical px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        {isPending && rejecting && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onResolve!("reject", reason.trim() || undefined);
+            }}
+            className="flex gap-2"
           >
-            {busy ? "Rejecting…" : "Confirm reject"}
-          </button>
-        </form>
-      )}
+            <input
+              autoFocus
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why? (optional — the agent learns from this)"
+              className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2 text-sm outline-none placeholder:text-ink-muted focus:border-accent"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-full bg-critical px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Rejecting…" : "Confirm"}
+            </button>
+          </form>
+        )}
 
-      <div className="px-5 pb-5">
-      <p className="mt-3 text-sm leading-relaxed text-ink-2">{d.rationale}</p>
+        {d.status === "rejected" && d.feedback && (
+          <p className="rounded-lg bg-critical/10 px-3 py-2 text-xs text-ink-2">
+            <span className="font-medium">Your reason:</span> {d.feedback}
+          </p>
+        )}
 
-      {d.status === "rejected" && d.feedback && (
-        <p className="mt-2 rounded-lg bg-critical/5 px-3 py-2 text-sm text-ink-2">
-          <span className="font-medium">Your reason:</span> {d.feedback} —
-          future research cycles take this into account.
-        </p>
-      )}
-
-      {d.evidence.length > 0 && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-xs font-medium text-ink-muted">
-            Evidence — {d.evidence.length} item{d.evidence.length > 1 ? "s" : ""}
-          </summary>
-          <ul className="mt-2 flex flex-col gap-2">
-            {d.evidence.map((e, i) => (
-              <li
-                key={i}
-                className="rounded-lg border border-hairline bg-page px-3 py-2 text-sm"
-              >
-                <div className="break-all text-xs text-ink-muted">
-                  {e.source} · {dateTime(e.timestamp)}
-                </div>
-                <div className="mt-0.5 break-all text-ink-2">{e.summary}</div>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      {d.safeguards.length > 0 && (
-        <div className="mt-4">
-          <div className="mb-2 text-xs font-medium text-ink-muted">
-            Safeguard checks
-          </div>
-          <SafeguardList checks={d.safeguards} />
-        </div>
-      )}
-
-      {d.order && (
-        <div className="mt-4 rounded-lg bg-page px-3 py-2 text-sm text-ink-2">
-          Paper order <span className="font-medium">{d.order.id.slice(0, 8)}</span>{" "}
-          {d.order.status}
-          {d.order.fillPrice ? ` @ ${usd(d.order.fillPrice)}` : ""} ·{" "}
-          {dateTime(d.order.filledAt ?? d.order.submittedAt)}
-          {d.order.status === "accepted" && (
-            <span className="text-ink-muted">
-              {" "}
-              — market closed; fills at the next open
-            </span>
-          )}
-        </div>
-      )}
+        {d.evidence.length > 0 && (
+          <details>
+            <summary className="cursor-pointer text-xs font-medium text-ink-muted">
+              Evidence — {d.evidence.length} item{d.evidence.length > 1 ? "s" : ""}
+            </summary>
+            <ul className="mt-2 flex flex-col gap-2">
+              {d.evidence.map((e, i) => (
+                <li key={i} className="rounded-lg bg-page px-3 py-2 text-sm">
+                  <div className="break-all text-xs text-ink-muted">
+                    {e.source} · {dateTime(e.timestamp)}
+                  </div>
+                  <div className="mt-0.5 break-all text-ink-2">{e.summary}</div>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {d.safeguards.length > 0 && (
+          <details>
+            <summary className="cursor-pointer text-xs font-medium text-ink-muted">
+              Safeguard checks — {passed}/{d.safeguards.length} passed
+            </summary>
+            <div className="mt-2">
+              <SafeguardList checks={d.safeguards} />
+            </div>
+          </details>
+        )}
       </div>
     </Card>
   );
