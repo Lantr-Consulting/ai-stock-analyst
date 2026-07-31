@@ -48,3 +48,7 @@ create policy "read own agent" on public.agents
 drop policy if exists "read own decisions" on public.decisions;
 create policy "read own decisions" on public.decisions
   for select using ((select auth.uid()) = user_id);
+
+-- Quant upgrade: agents are inactive until the user completes onboarding
+-- (reviews the interpreted strategy, edits universe/safeguards, activates).
+alter table public.agents add column if not exists activated boolean not null default false;

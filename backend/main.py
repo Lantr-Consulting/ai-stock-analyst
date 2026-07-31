@@ -72,8 +72,15 @@ DEFAULT_STRATEGY = {
 }
 
 
+EMPTY_PROFILE: dict[str, Any] = {}
+EMPTY_STRATEGY = {"summary": "", "watching": [], "rules": [], "universe": []}
+
+
 def _agent_for(user: dict[str, Any]) -> dict[str, Any]:
-    return db.ensure_agent(user["id"], user["email"], DEFAULT_PROFILE, DEFAULT_STRATEGY)
+    # New agents start EMPTY and inactive: the user describes how they invest,
+    # reviews the interpreted strategy, universe, and safeguards, then
+    # explicitly activates. No defaults they didn't bless.
+    return db.ensure_agent(user["id"], user["email"], EMPTY_PROFILE, EMPTY_STRATEGY)
 
 
 def _keys_for(agent_row: dict[str, Any]) -> broker.Keys:
@@ -103,7 +110,60 @@ def me(user: dict = Depends(current_user)) -> dict[str, Any]:
         "rawInstructions": row["raw_instructions"],
         "hasAlpacaKeys": bool(row.get("alpaca_api_key")),
         "paused": row["paused"],
+        "activated": row["activated"],
+        "safeguards": {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})},
     }
+
+
+class SettingsRequest(BaseModel):
+    safeguards: dict[str, Any] | None = None
+    universe: list[str] | None = None
+    paused: bool | None = None
+
+
+@app.patch("/me/settings")
+def update_settings(
+    req: SettingsRequest, user: dict = Depends(current_user)
+) -> dict[str, Any]:
+    row = _agent_for(user)
+    fields: dict[str, Any] = {}
+    if req.safeguards is not None:
+        allowed = {
+            "maxPositionPct", "maxCorePositionPct", "minCashPct",
+            "maxOrderPct", "maxTradesPerDay", "coreSymbols", "approvalMode",
+        }
+        fields["safeguards"] = {
+            **(row.get("safeguards") or {}),
+            **{k: v for k, v in req.safeguards.items() if k in allowed},
+        }
+    if req.universe is not None:
+        symbols = [s.strip().upper() for s in req.universe if s.strip()][:20]
+        if not symbols:
+            raise HTTPException(status_code=400, detail="universe cannot be empty")
+        fields["strategy"] = {**row["strategy"], "universe": symbols}
+    if req.paused is not None:
+        fields["paused"] = req.paused
+    if not fields:
+        raise HTTPException(status_code=400, detail="nothing to update")
+    updated = db.update_agent(user["id"], fields)
+    return {
+        "ok": True,
+        "safeguards": {**risk.DEFAULT_SAFEGUARDS, **(updated.get("safeguards") or {})},
+        "universe": updated["strategy"].get("universe", []),
+        "paused": updated["paused"],
+    }
+
+
+@app.post("/me/activate")
+def activate(user: dict = Depends(current_user)) -> dict[str, Any]:
+    row = _agent_for(user)
+    if not row["strategy"].get("universe") or row["strategy_version"] < 1:
+        raise HTTPException(
+            status_code=409,
+            detail="describe how you invest first — the agent needs an interpreted strategy and universe before it can run",
+        )
+    db.update_agent(user["id"], {"activated": True})
+    return {"ok": True, "activated": True}
 
 
 class AlpacaKeysRequest(BaseModel):
@@ -166,6 +226,8 @@ def decisions(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
 @app.post("/research-cycle")
 def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
     row = _agent_for(user)
+    if not row["activated"]:
+        raise HTTPException(status_code=409, detail="finish agent setup and activate first")
     if row["paused"]:
         raise HTTPException(status_code=409, detail="agent is paused")
     keys = _keys_for(row)
@@ -175,56 +237,88 @@ def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
         "universe", safeguards["approvedUniverse"]
     )
 
-    decision = research_agent.run_research_cycle(strategy, safeguards, keys)
-    action = decision.get("action", "hold")
-    evidence = decision.get("evidence", [])
-    rationale = decision.get("rationale", "")
+    plan = research_agent.run_research_cycle(strategy, safeguards, keys)
+    evidence = plan.get("evidence", [])
+    rationale = plan.get("rationale", "")
+    target = [
+        t for t in plan.get("targetAllocation", [])
+        if isinstance(t, dict) and t.get("symbol")
+    ]
+    orders = [
+        o for o in plan.get("orders", [])
+        if isinstance(o, dict) and o.get("symbol") and o.get("qty")
+    ][:5]
 
-    if action == "hold" or not decision.get("symbol") or not decision.get("qty"):
-        return db.add_decision(
-            user["id"],
-            {
-                "action": "hold",
-                "rationale": rationale or "No opportunity cleared the evidence bar.",
-                "strategyVersion": row["strategy_version"],
-                "evidence": evidence,
-                "safeguards": [],
-                "status": "approved",
-            },
-        )
-
-    symbol = decision["symbol"].upper()
-    qty = int(decision["qty"])
-    price = broker.latest_prices([symbol], keys).get(symbol)
-    if price is None:
-        raise HTTPException(status_code=502, detail=f"no price for {symbol}")
-
-    account = broker.account_snapshot(keys)
-    checks = risk.run_safeguards(
-        action=action,
-        symbol=symbol,
-        qty=qty,
-        price=price,
-        account=account,
-        safeguards=safeguards,
-        trades_today=broker.orders_submitted_today(keys),
-        pending_symbols=db.pending_symbols(user["id"]),
-    )
-
-    return db.add_decision(
+    plan_evidence = [
+        {
+            "source": "Target allocation",
+            "timestamp": account_ts(),
+            "summary": ", ".join(f"{t['symbol']} {t['pct']}%" for t in target) or "unchanged",
+        },
+        *evidence,
+    ]
+    plan_record = db.add_decision(
         user["id"],
         {
-            "action": action,
-            "symbol": symbol,
-            "qty": qty,
-            "estValue": round(qty * price, 2),
-            "rationale": rationale,
+            "action": "rebalance" if orders else "hold",
+            "rationale": rationale or "Portfolio already matches the target allocation.",
             "strategyVersion": row["strategy_version"],
-            "evidence": evidence,
-            "safeguards": checks,
-            "status": "proposed" if risk.passed(checks) else "blocked",
+            "evidence": plan_evidence,
+            "safeguards": [],
+            "status": "approved",
         },
     )
+
+    account = broker.account_snapshot(keys)
+    trades_today = broker.orders_submitted_today(keys)
+    pending = db.pending_symbols(user["id"])
+    order_records = []
+    proposed_count = 0
+    for o in orders:
+        symbol = str(o["symbol"]).upper()
+        qty = int(o["qty"])
+        action = "sell" if o.get("action") == "sell" else "buy"
+        price = broker.latest_prices([symbol], keys).get(symbol)
+        if price is None:
+            continue
+        checks = risk.run_safeguards(
+            action=action,
+            symbol=symbol,
+            qty=qty,
+            price=price,
+            account=account,
+            safeguards=safeguards,
+            trades_today=trades_today + proposed_count,
+            pending_symbols=pending,
+        )
+        ok = risk.passed(checks)
+        if ok:
+            proposed_count += 1
+            pending.add(symbol)
+        order_records.append(
+            db.add_decision(
+                user["id"],
+                {
+                    "action": action,
+                    "symbol": symbol,
+                    "qty": qty,
+                    "estValue": round(qty * price, 2),
+                    "rationale": o.get("why", rationale),
+                    "strategyVersion": row["strategy_version"],
+                    "evidence": [],
+                    "safeguards": checks,
+                    "status": "proposed" if ok else "blocked",
+                },
+            )
+        )
+
+    return {"plan": plan_record, "orders": order_records}
+
+
+def account_ts() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
 
 
 @app.post("/decisions/{decision_id}/approve")

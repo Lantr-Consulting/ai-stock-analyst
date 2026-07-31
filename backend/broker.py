@@ -184,3 +184,44 @@ def orders_submitted_today(keys: Keys = None) -> int:
     start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
     req = GetOrdersRequest(status=QueryOrderStatus.ALL, after=start_of_day, limit=100)
     return len(trading(keys).get_orders(req))
+
+
+# ---------------------------------------------------------------------------
+# Indicators (computed from daily bars — the agent's quant toolkit)
+# ---------------------------------------------------------------------------
+
+def indicators(symbol: str, keys: Keys = None) -> dict[str, Any]:
+    bars = daily_bars(symbol, 60, keys)
+    closes = [b["close"] for b in bars]
+    if len(closes) < 20:
+        return {"symbol": symbol, "error": "not enough history"}
+
+    def sma(n: int) -> float | None:
+        return round(sum(closes[-n:]) / n, 2) if len(closes) >= n else None
+
+    deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+    gains = [d for d in deltas[-14:] if d > 0]
+    losses = [-d for d in deltas[-14:] if d < 0]
+    avg_gain = sum(gains) / 14
+    avg_loss = sum(losses) / 14
+    rsi = 100.0 if avg_loss == 0 else round(100 - 100 / (1 + avg_gain / avg_loss), 1)
+
+    rets = [deltas[i] / closes[i] for i in range(len(deltas))]
+    mean = sum(rets) / len(rets)
+    vol = (sum((r - mean) ** 2 for r in rets) / len(rets)) ** 0.5 * (252 ** 0.5)
+
+    peak, max_dd = closes[0], 0.0
+    for c in closes:
+        peak = max(peak, c)
+        max_dd = max(max_dd, (peak - c) / peak)
+
+    return {
+        "symbol": symbol,
+        "price": closes[-1],
+        "sma20": sma(20),
+        "sma50": sma(50),
+        "rsi14": rsi,
+        "annualizedVolPct": round(vol * 100, 1),
+        "maxDrawdown60dPct": round(max_dd * 100, 1),
+        "return30dPct": round((closes[-1] / closes[-21] - 1) * 100, 1) if len(closes) >= 21 else None,
+    }

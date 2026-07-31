@@ -51,19 +51,44 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 // Me: the signed-in user's agent
 // ---------------------------------------------------------------------------
 
+export interface SafeguardSettings {
+  approvedUniverse: string[];
+  maxPositionPct: number;
+  maxCorePositionPct: number;
+  minCashPct: number;
+  maxOrderPct: number;
+  maxTradesPerDay: number;
+  coreSymbols: string[];
+  approvalMode?: string;
+}
+
 export interface Me {
   email: string;
-  profile: Omit<InvestorProfile, "version" | "updatedAt" | "rawInstructions">;
+  profile: Partial<Omit<InvestorProfile, "version" | "updatedAt" | "rawInstructions">>;
   strategy: Omit<Strategy, "version" | "updatedAt">;
   profileVersion: number;
   strategyVersion: number;
   rawInstructions: string[];
   hasAlpacaKeys: boolean;
   paused: boolean;
+  activated: boolean;
+  safeguards: SafeguardSettings;
 }
 
 export function getMe(): Promise<Me> {
   return req("/me");
+}
+
+export function updateSettings(payload: {
+  safeguards?: Partial<SafeguardSettings>;
+  universe?: string[];
+  paused?: boolean;
+}): Promise<{ ok: boolean; safeguards: SafeguardSettings; universe: string[]; paused: boolean }> {
+  return req("/me/settings", { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export function activateAgent(): Promise<{ ok: boolean }> {
+  return req("/me/activate", { method: "POST", body: "{}" });
 }
 
 export function setAlpacaKeys(apiKey: string, secretKey: string): Promise<{ ok: boolean }> {
@@ -95,7 +120,7 @@ export function getDecisions(): Promise<Decision[]> {
   return req("/decisions");
 }
 
-export function runResearchCycle(): Promise<Decision> {
+export function runResearchCycle(): Promise<{ plan: Decision; orders: Decision[] }> {
   return req("/research-cycle", { method: "POST", body: "{}" });
 }
 

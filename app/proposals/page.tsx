@@ -35,17 +35,20 @@ export default function ProposalsPage() {
     setResearching(true);
     setNote(null);
     try {
-      const d = await runResearchCycle();
-      setDecisions((prev) => [d, ...(prev ?? [])]);
+      const { plan, orders } = await runResearchCycle();
+      setDecisions((prev) => [...orders, plan, ...(prev ?? [])]);
+      const proposed = orders.filter((o) => o.status === "proposed").length;
       setNote(
-        d.status === "proposed"
-          ? "Research cycle complete — a new trade is waiting for your approval."
-          : d.action === "hold"
-            ? "Research cycle complete — the agent decided to hold."
-            : "Research cycle complete — the proposal was blocked by a safeguard."
+        orders.length === 0
+          ? "Research cycle complete — the portfolio already matches the target; the agent is holding."
+          : `Research cycle complete — portfolio plan with ${orders.length} order${orders.length > 1 ? "s" : ""}, ${proposed} awaiting your approval.`
       );
-    } catch {
-      setNote("Couldn't run a research cycle — is the backend reachable?");
+    } catch (e) {
+      setNote(
+        e instanceof Error && e.message.includes("activate")
+          ? "Finish agent setup first — describe how you invest and activate your agent."
+          : "Couldn't run a research cycle — is the backend reachable?"
+      );
     }
     setResearching(false);
   }

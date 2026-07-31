@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getMe, isSignedOut, setAlpacaKeys } from "@/lib/api";
+import { getMe, isSignedOut, setAlpacaKeys, updateSettings } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { safeguards as initial } from "@/lib/mock";
 
@@ -97,6 +97,46 @@ function BrokerageCard() {
 
 export default function SettingsPage() {
   const [sg, setSg] = useState(initial);
+  const [live, setLive] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getMe()
+      .then((me) => {
+        setSg({
+          approvedUniverse: me.strategy.universe ?? [],
+          maxPositionPct: me.safeguards.maxPositionPct,
+          minCashPct: me.safeguards.minCashPct,
+          maxOrderPct: me.safeguards.maxOrderPct,
+          maxTradesPerDay: me.safeguards.maxTradesPerDay,
+          approvalMode:
+            me.safeguards.approvalMode === "autonomous_within_limits"
+              ? "autonomous_within_limits"
+              : "approve_each",
+          paused: me.paused,
+        });
+        setLive(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function persist(fields: {
+    safeguards?: Record<string, number | string>;
+    universe?: string[];
+    paused?: boolean;
+  }) {
+    if (!live) return;
+    setSaving(true);
+    setSaveNote(null);
+    try {
+      await updateSettings(fields);
+      setSaveNote("Saved — the risk engine now enforces these values.");
+    } catch {
+      setSaveNote("Couldn't save — sign in and try again.");
+    }
+    setSaving(false);
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -125,7 +165,11 @@ export default function SettingsPage() {
             </p>
           </div>
           <button
-            onClick={() => setSg((s) => ({ ...s, paused: !s.paused }))}
+            onClick={() => {
+              const paused = !sg.paused;
+              setSg((s) => ({ ...s, paused }));
+              persist({ paused });
+            }}
             className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-medium ${
               sg.paused
                 ? "bg-series-1 text-white hover:opacity-90"
@@ -143,15 +187,19 @@ export default function SettingsPage() {
             checked={sg.approvalMode === "approve_each"}
             title="Approve each trade"
             body="Every order waits for your explicit approval before it is submitted. Default."
-            onSelect={() => setSg((s) => ({ ...s, approvalMode: "approve_each" }))}
+            onSelect={() => {
+              setSg((s) => ({ ...s, approvalMode: "approve_each" }));
+              persist({ safeguards: { approvalMode: "approve_each" } });
+            }}
           />
           <ModeRow
             checked={sg.approvalMode === "autonomous_within_limits"}
             title="Autonomous within limits"
-            body="The agent may execute paper trades on its own, but only inside the limits below. You are notified of every order."
-            onSelect={() =>
-              setSg((s) => ({ ...s, approvalMode: "autonomous_within_limits" }))
-            }
+            body="The agent may execute paper trades on its own, but only inside the limits below. You are notified of every order. (Execution arrives with always-on mode.)"
+            onSelect={() => {
+              setSg((s) => ({ ...s, approvalMode: "autonomous_within_limits" }));
+              persist({ safeguards: { approvalMode: "autonomous_within_limits" } });
+            }}
           />
         </div>
       </Card>
@@ -187,6 +235,27 @@ export default function SettingsPage() {
             onChange={(v) => setSg((s) => ({ ...s, maxTradesPerDay: v }))}
           />
         </div>
+        {live && (
+          <div className="mt-4 flex items-center justify-end gap-3">
+            {saveNote && <span className="text-xs text-ink-2">{saveNote}</span>}
+            <button
+              onClick={() =>
+                persist({
+                  safeguards: {
+                    maxPositionPct: sg.maxPositionPct,
+                    minCashPct: sg.minCashPct,
+                    maxOrderPct: sg.maxOrderPct,
+                    maxTradesPerDay: sg.maxTradesPerDay,
+                  },
+                })
+              }
+              disabled={saving}
+              className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save limits"}
+            </button>
+          </div>
+        )}
       </Card>
 
       <Card title="Approved universe">
@@ -206,9 +275,9 @@ export default function SettingsPage() {
       </Card>
 
       <p className="text-xs text-ink-muted">
-        Sample mode — changes here are local to this page. Settings persist to
-        the database in Milestone 5, and the risk engine enforces them in
-        Milestone 4.
+        {live
+          ? "These are your saved safeguards — the risk engine enforces them on every proposed order. Edit your universe on the Agent setup page."
+          : "Sample values — sign in to configure your own safeguards."}
       </p>
     </div>
   );

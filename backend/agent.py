@@ -20,29 +20,38 @@ from langchain_openai import ChatOpenAI
 import broker
 
 SYSTEM = """You are the research engine of a personal AI stock analyst managing \
-a SIMULATED paper-trading portfolio for a beginner investor.
+a SIMULATED paper-trading portfolio. Think like a portfolio manager, not a \
+stock picker: allocations first, individual trades second.
 
 Run one research cycle:
-1. Check the portfolio and latest prices for the universe.
-2. Pull recent news for the most relevant symbols.
-3. Pull daily bars for at most 2 candidates you are seriously considering.
-4. Decide ONE action: buy, sell, or hold.
+1. Check the portfolio, then latest prices for the whole universe.
+2. Pull recent news for the universe.
+3. Pull indicators (trend, RSI, volatility, drawdown) for the 3-5 most
+   relevant candidates given the strategy and current gaps.
+4. Design a TARGET ALLOCATION for the whole portfolio (percent per symbol,
+   plus cash) that expresses the strategy and the user's profile.
+5. Propose the basket of orders (0-5) that moves the portfolio toward the
+   target. Multiple orders in one cycle are encouraged when the portfolio is
+   far from target.
 
-Rules you must respect (a deterministic risk engine re-checks them after you):
+Rules you must respect (a deterministic risk engine re-checks each order):
 {rules}
 
-Decision discipline:
-- Propose a buy ONLY with at least two independent pieces of supporting
-  evidence from your tool calls (e.g. a news catalyst AND a price trend).
-- Size buy orders between 2% and {max_order_pct}% of portfolio equity, in
-  whole shares. A single order may NEVER exceed {max_order_pct}% of equity —
-  build large target allocations (like a core ETF position) incrementally,
-  one order per cycle.
-- If nothing clears the bar, hold — holding is a respectable decision.
+Discipline:
+- Every order needs evidence from your tool calls (price/indicator trend,
+  news catalyst, or allocation gap). Cite specifics in the rationale.
+- Each single order stays within {max_order_pct}% of equity, whole shares
+  only. Large targets are built over multiple cycles.
+- Weight the allocation toward the user's stated preferences; the strategy
+  rules set the bounds.
+- If the portfolio already matches the target, return zero orders — holding
+  is a respectable decision.
 - Never use symbols outside the universe: {universe}
 
-When you are done researching, respond with ONLY a JSON object, no prose:
-{{"action": "buy" | "sell" | "hold", "symbol": "XYZ" or null, "qty": <whole number> or null, "rationale": "<2-3 sentences citing your evidence>"}}"""
+When done researching, respond with ONLY a JSON object, no prose:
+{{"targetAllocation": [{{"symbol": "XYZ" or "CASH", "pct": <number>}}, ...],
+  "orders": [{{"action": "buy" | "sell", "symbol": "XYZ", "qty": <whole number>, "why": "<1 sentence>"}}, ...],
+  "rationale": "<3-5 sentences: the portfolio thesis and how the basket moves toward target>"}}"""
 
 
 def _tools(keys: broker.Keys = None) -> list[Any]:
@@ -70,7 +79,14 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
             broker.recent_news([s.strip() for s in symbols.split(",")], limit, keys)
         )
 
-    return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news]
+    @tool
+    def get_indicators(symbol: str) -> str:
+        """Quant indicators for one symbol: price vs SMA20/SMA50 (trend),
+        RSI14 (momentum), annualized volatility, 60-day max drawdown,
+        30-day return."""
+        return json.dumps(broker.indicators(symbol, keys))
+
+    return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news, get_indicators]
 
 
 def _llm() -> ChatOpenAI:
@@ -131,9 +147,11 @@ def run_research_cycle(
         raw = " ".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in raw)
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not match:
-        return {"action": "hold", "symbol": None, "qty": None,
-                "rationale": f"Research cycle produced no parseable decision. Raw: {raw[:200]}",
+        return {"targetAllocation": [], "orders": [],
+                "rationale": f"Research cycle produced no parseable plan. Raw: {raw[:200]}",
                 "evidence": evidence}
-    decision = json.loads(match.group(0))
-    decision["evidence"] = evidence
-    return decision
+    plan = json.loads(match.group(0))
+    plan.setdefault("targetAllocation", [])
+    plan.setdefault("orders", [])
+    plan["evidence"] = evidence
+    return plan
