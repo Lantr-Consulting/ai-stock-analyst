@@ -18,6 +18,22 @@ export function TopBar() {
   }, []);
 
   const pending = items.filter((d) => d.status === "proposed").length;
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    if (localStorage.getItem("theme") === "light") {
+      setTheme("light");
+      document.documentElement.dataset.theme = "light";
+    }
+  }, []);
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    if (next === "light") document.documentElement.dataset.theme = "light";
+    else delete document.documentElement.dataset.theme;
+  }
 
   return (
     <div className="relative flex items-center gap-2 border-b border-hairline bg-page px-5 py-1.5">
@@ -27,9 +43,25 @@ export function TopBar() {
         trading. No real money, not financial advice.
       </span>
       <button
+        onClick={toggleTheme}
+        aria-label="Toggle light/dark theme"
+        className="ml-auto rounded-full p-1.5 text-ink-2 hover:bg-ink/10 hover:text-ink"
+      >
+        {theme === "dark" ? (
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+          </svg>
+        )}
+      </button>
+      <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Activity notifications"
-        className="relative ml-auto rounded-full p-1.5 text-ink-2 hover:bg-white/10 hover:text-ink"
+        className="relative rounded-full p-1.5 text-ink-2 hover:bg-ink/10 hover:text-ink"
       >
         <svg
           viewBox="0 0 24 24"

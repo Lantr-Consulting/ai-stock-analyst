@@ -56,6 +56,31 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Light mode — toggled via data-theme on <html> */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #ffffff;
+  --surface: #f6f6f4;
+  --surface-2: #edede9;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-muted: #898781;
+  --grid: #e7e6e1;
+  --baseline: #d6d5ce;
+  --hairline: rgba(11, 11, 11, 0.09);
+
+  --series-1: #00a30a;
+  --good: #00a30a;
+  --warning: #b88600;
+  --critical: #d94100;
+  --delta-up: #007a06;
+  --delta-down: #d94100;
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #d0cfc8;
+}
+
 body {
   background: var(--page);
   color: var(--ink);
