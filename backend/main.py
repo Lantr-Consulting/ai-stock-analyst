@@ -290,6 +290,7 @@ def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
             safeguards=safeguards,
             trades_today=trades_today + proposed_count,
             pending_symbols=pending,
+            asset_check=broker.asset_ok(symbol, keys),
         )
         ok = risk.passed(checks)
         if ok:
@@ -343,6 +344,7 @@ def approve(decision_id: str, user: dict = Depends(current_user)) -> dict[str, A
         safeguards=safeguards,
         trades_today=broker.orders_submitted_today(keys),
         pending_symbols=db.pending_symbols(user["id"]) - {record["symbol"]},
+        asset_check=broker.asset_ok(record["symbol"], keys),
     )
     if not risk.passed(checks):
         return db.update_decision(

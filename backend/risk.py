@@ -29,6 +29,7 @@ def run_safeguards(
     safeguards: dict[str, Any],
     trades_today: int,
     pending_symbols: set[str],
+    asset_check: tuple[bool, str] | None = None,
 ) -> list[dict[str, str]]:
     sg = {**DEFAULT_SAFEGUARDS, **(safeguards or {})}
     equity = account["equity"]
@@ -41,10 +42,12 @@ def run_safeguards(
     def check(name: str, ok: bool, detail: str) -> None:
         checks.append({"name": name, "detail": detail, "status": "pass" if ok else "fail"})
 
+    ok, detail = asset_check if asset_check is not None else (True, "not checked")
+    check("Tradable asset", ok, detail)
     check(
-        "Approved universe",
-        symbol in sg["approvedUniverse"],
-        f"{symbol} {'is' if symbol in sg['approvedUniverse'] else 'is NOT'} in the approved watchlist",
+        "Penny-stock floor",
+        price >= 3.0,
+        f"Price ${price:,.2f} {'≥' if price >= 3.0 else '<'} $3.00 minimum",
     )
 
     if action == "buy":

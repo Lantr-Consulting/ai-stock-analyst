@@ -225,3 +225,35 @@ def indicators(symbol: str, keys: Keys = None) -> dict[str, Any]:
         "maxDrawdown60dPct": round(max_dd * 100, 1),
         "return30dPct": round((closes[-1] / closes[-21] - 1) * 100, 1) if len(closes) >= 21 else None,
     }
+
+
+def asset_ok(symbol: str, keys: Keys = None) -> tuple[bool, str]:
+    """Deterministic sanity check: real, active, tradable US equity/ETF."""
+    try:
+        a = trading(keys).get_asset(symbol)
+    except Exception:
+        return False, f"{symbol} is not a known US-listed asset"
+    exch = str(getattr(a, "exchange", ""))
+    if not a.tradable or str(a.status) not in ("AssetStatus.ACTIVE", "active"):
+        return False, f"{symbol} is not active/tradable on Alpaca"
+    if "OTC" in exch.upper():
+        return False, f"{symbol} trades OTC — excluded"
+    return True, f"{symbol} is an active, tradable listing ({exch.split('.')[-1]})"
+
+
+def market_movers(keys: Keys = None) -> dict[str, Any]:
+    """Top market movers + most-active stocks (Alpaca screener)."""
+    key, secret = _keys(keys)
+    h = {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret}
+    out: dict[str, Any] = {}
+    r = http.get("https://data.alpaca.markets/v1beta1/screener/stocks/movers",
+                 headers=h, params={"top": 10}, timeout=15)
+    if r.status_code == 200:
+        b = r.json()
+        out["gainers"] = [{"symbol": m["symbol"], "pctChange": m["percent_change"], "price": m["price"]} for m in b.get("gainers", [])]
+        out["losers"] = [{"symbol": m["symbol"], "pctChange": m["percent_change"], "price": m["price"]} for m in b.get("losers", [])]
+    r = http.get("https://data.alpaca.markets/v1beta1/screener/stocks/most-actives",
+                 headers=h, params={"top": 10, "by": "volume"}, timeout=15)
+    if r.status_code == 200:
+        out["mostActive"] = [{"symbol": m["symbol"], "volume": m["volume"]} for m in r.json().get("most_actives", [])]
+    return out

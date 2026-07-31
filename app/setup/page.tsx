@@ -293,8 +293,9 @@ function ActivateCard({
         <div className="flex flex-col gap-4">
           <div>
             <div className="mb-2 text-xs font-medium text-ink-muted">
-              Approved universe — the only symbols the agent may research and
-              trade. Edit freely.
+              Starting watchlist — the agent researches these first, but also
+              scans market movers and may propose any US-listed stock that
+              fits your profile. Edit freely, or leave as-is.
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {universe.map((s) => (

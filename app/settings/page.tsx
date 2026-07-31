@@ -258,9 +258,11 @@ export default function SettingsPage() {
         )}
       </Card>
 
-      <Card title="Approved universe">
+      <Card title="Watchlist">
         <p className="mb-3 text-sm text-ink-2">
-          The agent may only research and trade these symbols.
+          The agent&apos;s starting point — it also scans market movers and can
+          propose any US-listed stock. Automatic checks still reject unknown,
+          OTC, and sub-$3 symbols. Edit the list on the Agent setup page.
         </p>
         <div className="flex flex-wrap gap-1.5">
           {sg.approvedUniverse.map((s) => (

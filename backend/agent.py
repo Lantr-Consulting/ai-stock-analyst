@@ -24,8 +24,9 @@ a SIMULATED paper-trading portfolio. Think like a portfolio manager, not a \
 stock picker: allocations first, individual trades second.
 
 Run one research cycle:
-1. Check the portfolio, then latest prices for the whole universe.
-2. Pull recent news for the universe.
+1. Check the portfolio, then latest prices for the watchlist.
+2. Pull recent news for the watchlist, and check market movers for
+   opportunities beyond it that fit the user's profile.
 3. Pull indicators (trend, RSI, volatility, drawdown) for the 3-5 most
    relevant candidates given the strategy and current gaps.
 4. Design a TARGET ALLOCATION for the whole portfolio (percent per symbol,
@@ -46,7 +47,10 @@ Discipline:
   rules set the bounds.
 - If the portfolio already matches the target, return zero orders — holding
   is a respectable decision.
-- Never use symbols outside the universe: {universe}
+- Start from the watchlist ({universe}) but you may research and propose
+  ANY US-listed stock or ETF that fits the user's profile — when you go
+  beyond the watchlist, say why in the order's rationale. Avoid illiquid
+  or sub-$3 names; a deterministic engine rejects them anyway.
 
 When done researching, respond with ONLY a JSON object, no prose:
 {{"targetAllocation": [{{"symbol": "XYZ" or "CASH", "pct": <number>}}, ...],
@@ -80,13 +84,19 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
         )
 
     @tool
+    def get_market_movers() -> str:
+        """Today's top gainers, losers, and most-active US stocks —
+        for discovering candidates beyond the watchlist."""
+        return json.dumps(broker.market_movers(keys))
+
+    @tool
     def get_indicators(symbol: str) -> str:
         """Quant indicators for one symbol: price vs SMA20/SMA50 (trend),
         RSI14 (momentum), annualized volatility, 60-day max drawdown,
         30-day return."""
         return json.dumps(broker.indicators(symbol, keys))
 
-    return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news, get_indicators]
+    return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news, get_market_movers, get_indicators]
 
 
 def _llm() -> ChatOpenAI:
