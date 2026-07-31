@@ -51,18 +51,8 @@ const NAV = [
     ),
   },
   {
-    href: "/proposals",
-    label: "Proposals",
-    icon: (
-      <Icon>
-        <polyline points="9 11 12 14 21 5" />
-        <path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11" />
-      </Icon>
-    ),
-  },
-  {
     href: "/chat",
-    label: "Ask the analyst",
+    label: "Analyst",
     icon: (
       <Icon>
         <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 12.5 3a8.5 8.5 0 0 1 8.5 8.5Z" />

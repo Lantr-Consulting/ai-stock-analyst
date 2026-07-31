@@ -275,8 +275,11 @@ export default function ChatPage() {
 
       {pending.length > 0 && (
         <div className="shrink-0 border-t border-hairline pt-3">
-          <div className="mb-2 text-xs font-medium text-ink-muted">
-            Trades awaiting your approval
+          <div className="mb-2 flex items-center justify-between text-xs font-medium text-ink-muted">
+            <span>Trades awaiting your approval</span>
+            <a href="/proposals" className="font-medium text-series-1 hover:underline">
+              Full details & history →
+            </a>
           </div>
           <div className="flex flex-col gap-2">
             {pending.map((d) => (
@@ -349,7 +352,10 @@ export default function ChatPage() {
         </form>
         <p className="mt-2 text-xs text-ink-muted">
           Answers are grounded in the live paper account and the agent&apos;s
-          recorded decisions. Simulated — not financial advice.
+          recorded decisions. Simulated — not financial advice.{" "}
+          <a href="/proposals" className="text-series-1 hover:underline">
+            Research history & proposal details →
+          </a>
         </p>
       </div>
       </div>
