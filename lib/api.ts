@@ -120,8 +120,40 @@ export function getDecisions(): Promise<Decision[]> {
   return req("/decisions");
 }
 
-export function runResearchCycle(): Promise<{ plan: Decision; orders: Decision[] }> {
+export function runResearchCycle(): Promise<{ runId: string; status: string }> {
   return req("/research-cycle", { method: "POST", body: "{}" });
+}
+
+export interface ResearchRun {
+  id: string;
+  status: "running" | "done" | "error";
+  steer: string[];
+  error?: string | null;
+  started_at: string;
+  finished_at?: string | null;
+  decisions: Decision[];
+}
+
+export function getResearchRuns(): Promise<ResearchRun[]> {
+  return req("/research-runs");
+}
+
+export function steerRun(id: string, text: string): Promise<{ ok: boolean; note: string }> {
+  return req(`/research-runs/${id}/steer`, { method: "POST", body: JSON.stringify({ text }) });
+}
+
+export interface Thread {
+  id: string;
+  title: string;
+  created_at: string;
+}
+
+export function getThreads(): Promise<Thread[]> {
+  return req("/threads");
+}
+
+export function newThread(): Promise<Thread> {
+  return req("/threads", { method: "POST", body: "{}" });
 }
 
 export function approveDecision(id: string): Promise<Decision> {
@@ -155,16 +187,18 @@ export function interpretProfile(instructions: string): Promise<InterpretResult>
 }
 
 export async function askAnalyst(
-  messages: ChatMessage[]
-): Promise<{ text: string; strategyUpdated: boolean }> {
+  messages: ChatMessage[],
+  threadId?: string
+): Promise<{ text: string; strategyUpdated: boolean; threadId: string }> {
   return req("/chat", {
     method: "POST",
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, text: m.text })),
+      threadId: threadId ?? null,
     }),
   });
 }
 
-export function getChatHistory(): Promise<ChatMessage[]> {
-  return req("/chat/history");
+export function getChatHistory(threadId?: string): Promise<ChatMessage[]> {
+  return req(`/chat/history${threadId ? `?threadId=${threadId}` : ""}`);
 }

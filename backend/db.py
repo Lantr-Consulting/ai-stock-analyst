@@ -98,6 +98,7 @@ def _to_api(row: dict[str, Any]) -> dict[str, Any]:
         "status": row["status"],
         "order": row["order_record"],
         "feedback": row.get("feedback"),
+        "runId": row.get("run_id"),
     }
 
 
@@ -137,6 +138,7 @@ def add_decision(user_id: str, d: dict[str, Any]) -> dict[str, Any]:
         "safeguards": d.get("safeguards", []),
         "status": d["status"],
         "order_record": d.get("order"),
+        "run_id": d.get("runId"),
     }
     created = _rest(
         "POST", "decisions", json=row, extra_headers={"Prefer": "return=representation"}
@@ -177,15 +179,16 @@ def pending_symbols(user_id: str) -> set[str]:
 # Chat messages (persisted threads)
 # ---------------------------------------------------------------------------
 
-def add_message(user_id: str, role: str, text: str) -> None:
-    _rest("POST", "messages", json={"user_id": user_id, "role": role, "text": text})
+def add_message(user_id: str, role: str, text: str, thread_id: str | None = None) -> None:
+    _rest("POST", "messages",
+          json={"user_id": user_id, "role": role, "text": text, "thread_id": thread_id})
 
 
-def list_messages(user_id: str, limit: int = 50) -> list[dict[str, Any]]:
-    rows = _rest(
-        "GET", "messages",
-        params={"user_id": f"eq.{user_id}", "order": "created_at.desc", "limit": limit},
-    )
+def list_messages(user_id: str, limit: int = 50, thread_id: str | None = None) -> list[dict[str, Any]]:
+    params = {"user_id": f"eq.{user_id}", "order": "created_at.desc", "limit": limit}
+    if thread_id:
+        params["thread_id"] = f"eq.{thread_id}"
+    rows = _rest("GET", "messages", params=params)
     return [
         {"id": str(r["id"]), "role": r["role"], "text": r["text"], "at": r["created_at"]}
         for r in reversed(rows)
@@ -200,3 +203,62 @@ def supersede_pending(user_id: str) -> int:
         extra_headers={"Prefer": "return=representation"},
     )
     return len(rows or [])
+
+
+# ---------------------------------------------------------------------------
+# Research runs & chat threads (workspace upgrade)
+# ---------------------------------------------------------------------------
+
+def create_run(user_id: str) -> dict[str, Any]:
+    row = {"id": f"run-{uuid.uuid4().hex[:8]}", "user_id": user_id, "status": "running"}
+    return _rest("POST", "research_runs", json=row,
+                 extra_headers={"Prefer": "return=representation"})[0]
+
+
+def finish_run(user_id: str, run_id: str, status: str, error: str | None = None) -> None:
+    _rest("PATCH", "research_runs",
+          params={"id": f"eq.{run_id}", "user_id": f"eq.{user_id}"},
+          json={"status": status, "error": error,
+                "finished_at": datetime.now(timezone.utc).isoformat()})
+
+
+def list_runs(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    return _rest("GET", "research_runs",
+                 params={"user_id": f"eq.{user_id}", "order": "started_at.desc",
+                         "limit": limit})
+
+
+def steer_run(user_id: str, run_id: str, text: str) -> dict[str, Any] | None:
+    rows = _rest("GET", "research_runs",
+                 params={"id": f"eq.{run_id}", "user_id": f"eq.{user_id}", "limit": 1})
+    if not rows:
+        return None
+    steer = [*rows[0].get("steer", []), text]
+    return _rest("PATCH", "research_runs",
+                 params={"id": f"eq.{run_id}", "user_id": f"eq.{user_id}"},
+                 json={"steer": steer},
+                 extra_headers={"Prefer": "return=representation"})[0]
+
+
+def recent_steers(user_id: str, limit: int = 5) -> list[str]:
+    out: list[str] = []
+    for r in list_runs(user_id, limit):
+        out.extend(r.get("steer", []))
+    return out[-limit:]
+
+
+def create_thread(user_id: str, title: str = "New chat") -> dict[str, Any]:
+    row = {"id": f"th-{uuid.uuid4().hex[:8]}", "user_id": user_id, "title": title[:80]}
+    return _rest("POST", "threads", json=row,
+                 extra_headers={"Prefer": "return=representation"})[0]
+
+
+def list_threads(user_id: str) -> list[dict[str, Any]]:
+    return _rest("GET", "threads",
+                 params={"user_id": f"eq.{user_id}", "order": "created_at.desc"})
+
+
+def rename_thread(user_id: str, thread_id: str, title: str) -> None:
+    _rest("PATCH", "threads",
+          params={"id": f"eq.{thread_id}", "user_id": f"eq.{user_id}"},
+          json={"title": title[:80]})

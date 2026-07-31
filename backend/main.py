@@ -11,6 +11,7 @@ Paper trading only. Every screen that shows this data is labeled simulated.
 
 import json
 import os
+import threading
 import time
 from typing import Any, Literal
 
@@ -223,110 +224,101 @@ def decisions(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
     return records
 
 
+_research_in_flight: set[str] = set()
+
+
+def _do_research(user: dict, row: dict, run_id: str) -> None:
+    keys = _keys_for(row)
+    strategy = {**row["strategy"], "version": row["strategy_version"]}
+    safeguards = {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})}
+    try:
+        lessons = []
+        for st in db.recent_steers(user["id"]):
+            lessons.append(f'STEERING from the user: "{st}"')
+        for r in db.list_decisions(user["id"], limit=30):
+            if r.get("symbol") and r["status"] == "rejected" and r.get("feedback") != "Superseded by a newer research cycle.":
+                why = f' — their reason: "{r["feedback"]}"' if r.get("feedback") else ""
+                lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
+            elif r.get("symbol") and r["status"] in ("approved", "filled"):
+                lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
+        plan = research_agent.run_research_cycle(strategy, safeguards, keys, lessons[:12])
+        db.supersede_pending(user["id"])
+        evidence = plan.get("evidence", [])
+        rationale = plan.get("rationale", "")
+        target = [t for t in plan.get("targetAllocation", []) if isinstance(t, dict) and t.get("symbol")]
+        orders = [o for o in plan.get("orders", []) if isinstance(o, dict) and o.get("symbol") and o.get("qty")][:5]
+        plan_evidence = [{"source": "Target allocation", "timestamp": account_ts(),
+                          "summary": ", ".join(f"{t['symbol']} {t['pct']}%" for t in target) or "unchanged"}, *evidence]
+        db.add_decision(user["id"], {"action": "rebalance" if orders else "hold",
+            "rationale": rationale or "Portfolio already matches the target allocation.",
+            "strategyVersion": row["strategy_version"], "evidence": plan_evidence,
+            "safeguards": [], "status": "approved", "runId": run_id})
+        account = broker.account_snapshot(keys)
+        trades_today = broker.orders_submitted_today(keys)
+        pending = db.pending_symbols(user["id"])
+        proposed_count = 0
+        for o in orders:
+            symbol = str(o["symbol"]).upper(); qty = int(o["qty"])
+            action = "sell" if o.get("action") == "sell" else "buy"
+            price = broker.latest_prices([symbol], keys).get(symbol)
+            if price is None:
+                continue
+            checks = risk.run_safeguards(action=action, symbol=symbol, qty=qty, price=price,
+                account=account, safeguards=safeguards,
+                trades_today=trades_today + proposed_count, pending_symbols=pending,
+                asset_check=broker.asset_ok(symbol, keys))
+            ok = risk.passed(checks)
+            if ok:
+                proposed_count += 1; pending.add(symbol)
+            db.add_decision(user["id"], {"action": action, "symbol": symbol, "qty": qty,
+                "estValue": round(qty * price, 2), "rationale": o.get("why", rationale),
+                "strategyVersion": row["strategy_version"], "evidence": [],
+                "safeguards": checks, "status": "proposed" if ok else "blocked", "runId": run_id})
+        db.finish_run(user["id"], run_id, "done")
+    except Exception as exc:
+        db.finish_run(user["id"], run_id, "error", str(exc)[:300])
+    finally:
+        _research_in_flight.discard(user["id"])
+
+
 @app.post("/research-cycle")
 def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
+    if user["id"] in _research_in_flight:
+        raise HTTPException(status_code=409, detail="a research cycle is already running — results appear when it finishes")
     row = _agent_for(user)
     if not row["activated"]:
         raise HTTPException(status_code=409, detail="finish agent setup and activate first")
     if row["paused"]:
         raise HTTPException(status_code=409, detail="agent is paused")
-    keys = _keys_for(row)
-    strategy = {**row["strategy"], "version": row["strategy_version"]}
-    safeguards = {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})}
-    safeguards["approvedUniverse"] = strategy.get(
-        "universe", safeguards["approvedUniverse"]
-    )
-
-    lessons = []
-    for r in db.list_decisions(user["id"], limit=30):
-        if r.get("symbol") and r["status"] == "rejected":
-            why = f' — their reason: "{r["feedback"]}"' if r.get("feedback") else ""
-            lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
-        elif r.get("symbol") and r["status"] in ("approved", "filled"):
-            lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
+    run = db.create_run(user["id"])
     _research_in_flight.add(user["id"])
-    try:
-        plan = research_agent.run_research_cycle(strategy, safeguards, keys, lessons[:12])
-    finally:
-        _research_in_flight.discard(user["id"])
-    # A new cycle supersedes any still-pending proposals from earlier cycles.
-    db.supersede_pending(user["id"])
-    evidence = plan.get("evidence", [])
-    rationale = plan.get("rationale", "")
-    target = [
-        t for t in plan.get("targetAllocation", [])
-        if isinstance(t, dict) and t.get("symbol")
-    ]
-    orders = [
-        o for o in plan.get("orders", [])
-        if isinstance(o, dict) and o.get("symbol") and o.get("qty")
-    ][:5]
+    threading.Thread(target=_do_research, args=(user, row, run["id"]), daemon=True).start()
+    return {"runId": run["id"], "status": "running"}
 
-    plan_evidence = [
-        {
-            "source": "Target allocation",
-            "timestamp": account_ts(),
-            "summary": ", ".join(f"{t['symbol']} {t['pct']}%" for t in target) or "unchanged",
-        },
-        *evidence,
-    ]
-    plan_record = db.add_decision(
-        user["id"],
-        {
-            "action": "rebalance" if orders else "hold",
-            "rationale": rationale or "Portfolio already matches the target allocation.",
-            "strategyVersion": row["strategy_version"],
-            "evidence": plan_evidence,
-            "safeguards": [],
-            "status": "approved",
-        },
-    )
 
-    account = broker.account_snapshot(keys)
-    trades_today = broker.orders_submitted_today(keys)
-    pending = db.pending_symbols(user["id"])
-    order_records = []
-    proposed_count = 0
-    for o in orders:
-        symbol = str(o["symbol"]).upper()
-        qty = int(o["qty"])
-        action = "sell" if o.get("action") == "sell" else "buy"
-        price = broker.latest_prices([symbol], keys).get(symbol)
-        if price is None:
-            continue
-        checks = risk.run_safeguards(
-            action=action,
-            symbol=symbol,
-            qty=qty,
-            price=price,
-            account=account,
-            safeguards=safeguards,
-            trades_today=trades_today + proposed_count,
-            pending_symbols=pending,
-            asset_check=broker.asset_ok(symbol, keys),
-        )
-        ok = risk.passed(checks)
-        if ok:
-            proposed_count += 1
-            pending.add(symbol)
-        order_records.append(
-            db.add_decision(
-                user["id"],
-                {
-                    "action": action,
-                    "symbol": symbol,
-                    "qty": qty,
-                    "estValue": round(qty * price, 2),
-                    "rationale": o.get("why", rationale),
-                    "strategyVersion": row["strategy_version"],
-                    "evidence": [],
-                    "safeguards": checks,
-                    "status": "proposed" if ok else "blocked",
-                },
-            )
-        )
+@app.get("/research-runs")
+def research_runs(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
+    runs = db.list_runs(user["id"])
+    decisions = db.list_decisions(user["id"], limit=100)
+    by_run: dict[str, list] = {}
+    for d in decisions:
+        by_run.setdefault(d.get("runId") or "", []).append(d)
+    return [{**r, "decisions": by_run.get(r["id"], [])} for r in runs]
 
-    return {"plan": plan_record, "orders": order_records}
+
+class SteerRequest(BaseModel):
+    text: str
+
+
+@app.post("/research-runs/{run_id}/steer")
+def steer(run_id: str, req: SteerRequest, user: dict = Depends(current_user)) -> dict[str, Any]:
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="empty steer")
+    run = db.steer_run(user["id"], run_id, req.text.strip()[:300])
+    if not run:
+        raise HTTPException(status_code=404, detail="run not found")
+    return {"ok": True, "steer": run["steer"],
+            "note": "Guidance saved — it steers the next research cycle."}
 
 
 def account_ts() -> str:
@@ -535,6 +527,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
+    threadId: str | None = None
 
 
 @app.post("/chat")
@@ -580,11 +573,27 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
                 text += "\n\n(I've updated your strategy to reflect this.)"
             except Exception:
                 pass
-    db.add_message(user["id"], "user", req.messages[-1].text)
-    db.add_message(user["id"], "agent", text)
-    return {"text": text, "strategyUpdated": strategy_updated}
+    thread_id = req.threadId
+    if not thread_id:
+        threads = db.list_threads(user["id"])
+        thread_id = threads[0]["id"] if threads else db.create_thread(user["id"])["id"]
+    if len(req.messages) == 1:
+        db.rename_thread(user["id"], thread_id, req.messages[-1].text[:60])
+    db.add_message(user["id"], "user", req.messages[-1].text, thread_id)
+    db.add_message(user["id"], "agent", text, thread_id)
+    return {"text": text, "strategyUpdated": strategy_updated, "threadId": thread_id}
 
 
 @app.get("/chat/history")
-def chat_history(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
-    return db.list_messages(user["id"])
+def chat_history(threadId: str | None = None, user: dict = Depends(current_user)) -> list[dict[str, Any]]:
+    return db.list_messages(user["id"], thread_id=threadId)
+
+
+@app.get("/threads")
+def threads(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
+    return db.list_threads(user["id"])
+
+
+@app.post("/threads")
+def new_thread(user: dict = Depends(current_user)) -> dict[str, Any]:
+    return db.create_thread(user["id"])

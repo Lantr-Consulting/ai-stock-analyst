@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { askAnalyst, getChatHistory, isSignedOut } from "@/lib/api";
+import { askAnalyst, getChatHistory, getThreads, isSignedOut, newThread, type Thread } from "@/lib/api";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
 
@@ -19,12 +19,33 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
 
   useEffect(() => {
-    getChatHistory()
-      .then((h) => setMessages(h))
+    getThreads()
+      .then((ts) => {
+        setThreads(ts);
+        if (ts.length > 0) setThreadId(ts[0].id);
+      })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!threadId) return;
+    getChatHistory(threadId)
+      .then((h) => setMessages(h))
+      .catch(() => {});
+  }, [threadId]);
+
+  async function startNewChat() {
+    try {
+      const t = await newThread();
+      setThreads((ts) => [t, ...ts]);
+      setThreadId(t.id);
+      setMessages([]);
+    } catch {}
+  }
 
   async function send(text: string) {
     const t = text.trim();
@@ -41,8 +62,14 @@ export default function ChatPage() {
     setThinking(true);
     let reply: string;
     try {
-      const res = await askAnalyst(thread);
+      const res = await askAnalyst(thread, threadId ?? undefined);
       reply = res.text;
+      if (!threadId) {
+        setThreadId(res.threadId);
+        getThreads().then(setThreads).catch(() => {});
+      } else if (thread.length === 1) {
+        getThreads().then(setThreads).catch(() => {});
+      }
     } catch (e) {
       reply = isSignedOut(e)
         ? "You're not signed in — sign in (link in the sidebar) and I'll answer from your own account records."
@@ -62,15 +89,41 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Ask the analyst
-        </h1>
-        <p className="mt-0.5 text-sm text-ink-muted">
-          Interrogate any decision. The agent answers from its recorded
-          evidence and safeguard results — never from a made-up explanation.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Ask the analyst
+          </h1>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            Interrogate any decision. The agent answers from its recorded
+            evidence and safeguard results — never from a made-up explanation.
+          </p>
+        </div>
+        <button
+          onClick={startNewChat}
+          className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+        >
+          + New chat
+        </button>
       </header>
+
+      {threads.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {threads.slice(0, 8).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setThreadId(t.id)}
+              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs ${
+                t.id === threadId
+                  ? "border-series-1 bg-series-1/10 font-medium text-ink"
+                  : "border-hairline text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+              }`}
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         {messages.length === 0 && !thinking && (

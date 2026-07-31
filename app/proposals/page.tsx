@@ -5,9 +5,12 @@ import Link from "next/link";
 import {
   approveDecision,
   getDecisions,
+  getResearchRuns,
   isSignedOut,
   rejectDecision,
   runResearchCycle,
+  steerRun,
+  type ResearchRun,
 } from "@/lib/api";
 import { Card, SafeguardList, StatusBadge } from "@/components/ui";
 import { dateTime, usd } from "@/lib/format";
@@ -20,16 +23,43 @@ export default function ProposalsPage() {
   const [researching, setResearching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [runs, setRuns] = useState<ResearchRun[]>([]);
+  const [steerText, setSteerText] = useState("");
   const offline = status !== "live";
+  const activeRun = runs.find((r) => r.status === "running");
 
   useEffect(() => {
-    const load = () =>
-      getDecisions()
+    if (!activeRun) return;
+    const t = setInterval(() => {
+      getResearchRuns()
+        .then((rs) => {
+          setRuns(rs);
+          const done = rs.find((r) => r.id === activeRun.id && r.status !== "running");
+          if (done) {
+            getDecisions().then(setDecisions).catch(() => {});
+            setResearching(false);
+            setNote(
+              done.status === "error"
+                ? `Research run failed: ${done.error ?? "unknown error"}`
+                : "Research complete — the plan and proposals are below."
+            );
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(t);
+  }, [activeRun?.id, activeRun]);
+
+  useEffect(() => {
+    const load = () => {
+      getResearchRuns().then(setRuns).catch(() => {});
+      return getDecisions()
         .then(setDecisions)
         .catch((e) => {
           setStatus(isSignedOut(e) ? "signedOut" : "offline");
           setDecisions((prev) => prev ?? mockDecisions);
         });
+    };
     load();
     const onFocus = () => {
       if (document.visibilityState === "visible") load();
@@ -46,22 +76,20 @@ export default function ProposalsPage() {
     setResearching(true);
     setNote(null);
     try {
-      const { plan, orders } = await runResearchCycle();
-      setDecisions((prev) => [...orders, plan, ...(prev ?? [])]);
-      const proposed = orders.filter((o) => o.status === "proposed").length;
-      setNote(
-        orders.length === 0
-          ? "Research cycle complete — the portfolio already matches the target; the agent is holding."
-          : `Research cycle complete — portfolio plan with ${orders.length} order${orders.length > 1 ? "s" : ""}, ${proposed} awaiting your approval.`
-      );
+      await runResearchCycle();
+      const rs = await getResearchRuns();
+      setRuns(rs);
+      setNote("Research started — it keeps running even if you leave this page.");
     } catch (e) {
+      setResearching(false);
       setNote(
         e instanceof Error && e.message.includes("activate")
           ? "Finish agent setup first — describe how you invest and activate your agent."
-          : "Couldn't run a research cycle — is the backend reachable?"
+          : e instanceof Error && e.message.includes("already running")
+            ? "A research cycle is already running — results appear when it finishes."
+            : "Couldn't run a research cycle — is the backend reachable?"
       );
     }
-    setResearching(false);
   }
 
   async function resolve(id: string, action: "approve" | "reject", reason?: string) {
@@ -119,6 +147,46 @@ export default function ProposalsPage() {
       </header>
 
       {note && <p className="text-sm text-ink-2">{note}</p>}
+
+      {activeRun && (
+        <Card className="ring-1 ring-series-1/40">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="size-2 animate-pulse rounded-full bg-series-1" />
+            <span className="font-medium">Research in progress</span>
+            <span className="text-ink-muted">
+              started {dateTime(activeRun.started_at)} — reading prices, news,
+              movers, and indicators…
+            </span>
+          </div>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!steerText.trim()) return;
+              try {
+                const r = await steerRun(activeRun.id, steerText.trim());
+                setNote(r.note);
+                setSteerText("");
+              } catch {
+                setNote("Couldn't save steering — try again.");
+              }
+            }}
+            className="mt-3 flex gap-2"
+          >
+            <input
+              value={steerText}
+              onChange={(e) => setSteerText(e.target.value)}
+              placeholder="Steer the research… e.g. 'focus on small-cap AI names today'"
+              className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
+            />
+            <button
+              type="submit"
+              className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+            >
+              Steer
+            </button>
+          </form>
+        </Card>
+      )}
       {decisions === null && !offline && (
         <div className="h-40 animate-pulse rounded-xl bg-ink/5 dark:bg-white/10" />
       )}
