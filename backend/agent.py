@@ -43,6 +43,11 @@ reasons as standing instructions; do not re-propose something equivalent to
 a rejection unless conditions have clearly changed:
 {lessons}
 
+The portfolio includes "openOrders" — orders already placed and awaiting
+execution (e.g. queued for market open). Treat a pending buy as if the
+position already exists: NEVER propose a trade that duplicates or overlaps
+an open order, and count its cost against available cash.
+
 Discipline:
 - Every order needs evidence from your tool calls (price/indicator trend,
   news catalyst, or allocation gap). Cite specifics in the rationale.

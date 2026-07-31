@@ -255,7 +255,9 @@ def _do_research(user: dict, row: dict, run_id: str) -> None:
             "safeguards": [], "status": "approved", "runId": run_id})
         account = broker.account_snapshot(keys)
         trades_today = broker.orders_submitted_today(keys)
-        pending = db.pending_symbols(user["id"])
+        pending = db.pending_symbols(user["id"]) | {
+            o["symbol"] for o in account.get("openOrders", [])
+        }
         proposed_count = 0
         for o in orders:
             symbol = str(o["symbol"]).upper(); qty = int(o["qty"])
@@ -355,7 +357,8 @@ def approve(decision_id: str, user: dict = Depends(current_user)) -> dict[str, A
         account=account,
         safeguards=safeguards,
         trades_today=broker.orders_submitted_today(keys),
-        pending_symbols=db.pending_symbols(user["id"]) - {record["symbol"]},
+        pending_symbols=(db.pending_symbols(user["id"]) - {record["symbol"]})
+        | {o["symbol"] for o in account.get("openOrders", [])},
         asset_check=broker.asset_ok(record["symbol"], keys),
     )
     if not risk.passed(checks):

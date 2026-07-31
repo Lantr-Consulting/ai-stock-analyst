@@ -60,11 +60,21 @@ def keys_valid(keys: Keys) -> bool:
 # Account & portfolio
 # ---------------------------------------------------------------------------
 
+def open_orders(keys: Keys = None) -> list[dict[str, Any]]:
+    req = GetOrdersRequest(status=QueryOrderStatus.OPEN, limit=50)
+    return [
+        {"symbol": o.symbol, "side": str(o.side.value if hasattr(o.side, "value") else o.side),
+         "qty": float(o.qty or 0), "status": str(o.status.value if hasattr(o.status, "value") else o.status)}
+        for o in trading(keys).get_orders(req)
+    ]
+
+
 def account_snapshot(keys: Keys = None) -> dict[str, Any]:
     client = trading(keys)
     acct = client.get_account()
     positions = client.get_all_positions()
     return {
+        "openOrders": open_orders(keys),
         "asOf": datetime.now(timezone.utc).isoformat(),
         "cash": float(acct.cash),
         "equity": float(acct.equity),
