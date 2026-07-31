@@ -119,7 +119,7 @@ export const decisions: Decision[] = [
       },
     ],
     safeguards: [
-      { name: "Approved universe", detail: "AVGO is in the approved watchlist", status: "pass" },
+      { name: "Watchlist", detail: "AVGO is in the approved watchlist", status: "pass" },
       { name: "Position limit", detail: "Resulting allocation 8.2% ≤ 15% limit", status: "pass" },
       { name: "Cash floor", detail: "Cash after purchase 14.7% ≥ 10% minimum", status: "pass" },
       { name: "Order size", detail: "Order is 8.2% of portfolio ≤ 10% limit", status: "pass" },
@@ -145,7 +145,7 @@ export const decisions: Decision[] = [
       },
     ],
     safeguards: [
-      { name: "Approved universe", detail: "NVDA is in the approved watchlist", status: "pass" },
+      { name: "Watchlist", detail: "NVDA is in the approved watchlist", status: "pass" },
       { name: "Position limit", detail: "Resulting allocation 19.4% > 15% limit", status: "fail" },
       { name: "Cash floor", detail: "Cash after purchase 11.2% ≥ 10% minimum", status: "pass" },
     ],
@@ -174,7 +174,7 @@ export const decisions: Decision[] = [
       },
     ],
     safeguards: [
-      { name: "Approved universe", detail: "MSFT is in the approved watchlist", status: "pass" },
+      { name: "Watchlist", detail: "MSFT is in the approved watchlist", status: "pass" },
       { name: "Position limit", detail: "Resulting allocation 13.4% ≤ 15% limit", status: "pass" },
       { name: "Cash floor", detail: "Cash after purchase 18.9% ≥ 10% minimum", status: "pass" },
       { name: "Order size", detail: "Order is 4.4% of portfolio ≤ 10% limit", status: "pass" },

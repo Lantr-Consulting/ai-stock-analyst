@@ -213,7 +213,7 @@ export default function SetupPage() {
           </div>
           <div className="mt-4">
             <div className="text-xs font-medium text-ink-muted">
-              Approved universe
+              Watchlist
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {v.strategy.universe.map((s) => (

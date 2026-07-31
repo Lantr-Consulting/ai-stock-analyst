@@ -415,10 +415,10 @@ instructions affect; never invent preferences the user did not state.
 Constraints:
 - US-listed stocks and broad-market ETFs only. No options, margin, short \
 selling, or crypto.
-- The universe is a STARTING WATCHLIST (5-15 liquid symbols reflecting the \
-user's stated interests) — it does NOT limit the agent: it researches the \
-whole US market and proposes any listed name that fits the profile. Never \
-write rules that restrict trading to the watchlist.
+- The "universe" field is simply the WATCHLIST: 5-15 liquid symbols the \
+user cares about most. It never limits anything — the agent researches the \
+whole US market. Never write rules mentioning a "universe" or restricting \
+research/trading to any list.
 - riskTolerance is exactly one of: "conservative", "moderate", "aggressive".
 - Rules must be concrete and checkable, and must always include an approval \
 rule ("Propose, don't execute — every order needs approval") unless the user \
