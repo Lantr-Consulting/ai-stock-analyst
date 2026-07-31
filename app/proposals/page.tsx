@@ -253,6 +253,61 @@ export default function ProposalsPage() {
       {resolved.slice(0, 8).map((d) => (
         <ProposalCard key={d.id} decision={d} busy={false} />
       ))}
+
+      {runs.length > 0 && (
+        <>
+          <h2 className="mt-2 text-sm font-semibold text-ink-muted">
+            Research history
+          </h2>
+          <Card>
+            <ol className="flex flex-col gap-3">
+              {runs.slice(0, 10).map((r) => {
+                const orders = r.decisions.filter((d) => d.symbol);
+                const plan = r.decisions.find((d) => !d.symbol);
+                return (
+                  <li key={r.id} className="flex flex-col gap-1 border-b border-hairline pb-3 last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span
+                        aria-hidden
+                        className={`size-2 rounded-full ${
+                          r.status === "running"
+                            ? "animate-pulse bg-series-1"
+                            : r.status === "error"
+                              ? "bg-critical"
+                              : "bg-good"
+                        }`}
+                      />
+                      <span className="font-medium">
+                        {r.status === "running"
+                          ? "Researching…"
+                          : r.status === "error"
+                            ? "Failed"
+                            : `${orders.length} order${orders.length === 1 ? "" : "s"} proposed`}
+                      </span>
+                      <span className="text-xs text-ink-muted">
+                        {dateTime(r.started_at)}
+                        {orders.length > 0 &&
+                          ` · ${orders.map((o) => `${o.action === "sell" ? "sell" : "buy"} ${o.symbol}`).join(", ")}`}
+                      </span>
+                    </div>
+                    {plan?.rationale && (
+                      <p className="line-clamp-2 pl-4 text-xs text-ink-2">{plan.rationale}</p>
+                    )}
+                    {r.steer.length > 0 && (
+                      <p className="pl-4 text-xs text-ink-muted">
+                        Your steering: {r.steer.join(" · ")}
+                      </p>
+                    )}
+                    {r.error && (
+                      <p className="pl-4 text-xs text-critical">{r.error}</p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

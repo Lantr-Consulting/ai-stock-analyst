@@ -283,8 +283,15 @@ def _do_research(user: dict, row: dict, run_id: str) -> None:
 
 @app.post("/research-cycle")
 def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
-    if user["id"] in _research_in_flight:
-        raise HTTPException(status_code=409, detail="a research cycle is already running — results appear when it finishes")
+    # DB-backed lock (works across workers): any run still 'running' and
+    # younger than 15 minutes blocks a new one.
+    from datetime import datetime, timedelta, timezone
+    for r in db.list_runs(user["id"], limit=3):
+        if r["status"] == "running":
+            started = datetime.fromisoformat(r["started_at"].replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) - started < timedelta(minutes=15):
+                raise HTTPException(status_code=409, detail="a research cycle is already running — results appear when it finishes")
+            db.finish_run(user["id"], r["id"], "error", "timed out")
     row = _agent_for(user)
     if not row["activated"]:
         raise HTTPException(status_code=409, detail="finish agent setup and activate first")
