@@ -16,7 +16,7 @@ import { Card, SafeguardList, StatusBadge } from "@/components/ui";
 import { dateTime, usd } from "@/lib/format";
 import { decisions as mockDecisions } from "@/lib/mock";
 import { useToast } from "@/components/toast";
-import type { Decision } from "@/lib/types";
+import type { Decision, DecisionStatus } from "@/lib/types";
 
 export default function ProposalsPage() {
   const [decisions, setDecisions] = useState<Decision[] | null>(null);
@@ -28,6 +28,7 @@ export default function ProposalsPage() {
   const toast = useToast();
   const [steerText, setSteerText] = useState("");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | DecisionStatus>("all");
   const offline = status !== "live";
   const activeRun = runs.find((r) => r.status === "running");
 
@@ -147,8 +148,17 @@ export default function ProposalsPage() {
   const all = (decisions ?? []).filter(
     (d) => !selectedRunId || d.runId === selectedRunId
   );
-  const pending = all.filter((d) => d.status === "proposed");
-  const resolved = all.filter((d) => d.status !== "proposed");
+  const shown = filter === "all" ? all : all.filter((d) => d.status === filter);
+  const pending = shown.filter((d) => d.status === "proposed");
+  const resolved = shown.filter((d) => d.status !== "proposed");
+  const FILTERS: { v: "all" | DecisionStatus; label: string }[] = [
+    { v: "all", label: "All" },
+    { v: "proposed", label: "Awaiting approval" },
+    { v: "approved", label: "Approved" },
+    { v: "filled", label: "Filled" },
+    { v: "blocked", label: "Blocked" },
+    { v: "rejected", label: "Rejected" },
+  ];
 
   return (
     <div className="flex flex-1 gap-6">
@@ -244,6 +254,30 @@ export default function ProposalsPage() {
         )}
       </header>
 
+      <div className="flex flex-wrap gap-1.5">
+        {FILTERS.map((f) => {
+          const count =
+            f.v === "all" ? all.length : all.filter((d) => d.status === f.v).length;
+          if (f.v !== "all" && count === 0) return null;
+          return (
+            <button
+              key={f.v}
+              onClick={() => setFilter(f.v)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                filter === f.v
+                  ? "bg-accent text-black"
+                  : "bg-surface text-ink-2 hover:bg-white/10"
+              }`}
+            >
+              {f.label}
+              <span className={filter === f.v ? "ml-1.5 opacity-60" : "ml-1.5 text-ink-muted"}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {note && <p className="text-sm text-ink-2">{note}</p>}
 
       {activeRun && (
@@ -297,7 +331,7 @@ export default function ProposalsPage() {
         <div className="h-40 animate-pulse rounded-xl bg-ink/5 dark:bg-white/10" />
       )}
 
-      {decisions !== null && pending.length === 0 && (
+      {decisions !== null && filter === "all" && pending.length === 0 && (
         <Card>
           <p className="text-sm text-ink-2">
             No trades waiting for approval. Run a research cycle — the agent
@@ -318,7 +352,7 @@ export default function ProposalsPage() {
         ))}
       </div>
 
-      {resolved.length > 0 && (
+      {resolved.length > 0 && filter === "all" && (
         <h2 className="mt-2 text-sm font-semibold text-ink-muted">
           Recently resolved
         </h2>
