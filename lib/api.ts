@@ -278,7 +278,7 @@ export interface TickerDetail {
     return30dPct?: number | null;
     error?: string;
   } | null;
-  bars: { date: string; close: number }[];
+  bars: { date: string; close: number; volume?: number; high?: number; low?: number }[];
   news: { headline: string; source: string; at: string; summary: string }[];
 }
 

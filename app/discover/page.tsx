@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui";
 import { dateTime, usd } from "@/lib/format";
 import { useToast } from "@/components/toast";
+import type { Position } from "@/lib/types";
 
 function Spark({
   closes,
@@ -109,7 +110,7 @@ export default function DiscoverPage() {
   const toast = useToast();
 
   const [mine, setMine] = useState<{
-    positions: { symbol: string; price: number; pl?: number | null }[];
+    positions: Position[];
     sparks: Record<string, number[]>;
   }>({ positions: [], sparks: {} });
 
@@ -121,14 +122,10 @@ export default function DiscoverPage() {
         setCanWatch(true);
         const wl = me.strategy.universe ?? [];
         setWatchlist(wl);
-        let positions: { symbol: string; price: number; pl?: number | null }[] = [];
+        let positions: Position[] = [];
         try {
           const p = await getPortfolio();
-          positions = p.positions.map((x) => ({
-            symbol: x.symbol,
-            price: x.price,
-            pl: x.unrealizedPlPct,
-          }));
+          positions = p.positions;
         } catch {}
         const syms = [...new Set([...positions.map((p) => p.symbol), ...wl])];
         if (syms.length) {
@@ -206,11 +203,26 @@ export default function DiscoverPage() {
           tf === "1W" ? closes.slice(-5) : tf === "1M" ? closes.slice(-21) : closes;
         const sym = detail.info.symbol;
         const est = (ind?.price ?? 0) * buyQty;
+        const held = mine.positions.find((p) => p.symbol === sym);
+        const heldPl = held ? held.unrealizedPl ?? (held.price - held.costBasis) * held.shares : 0;
+        const heldPlPct = held ? held.unrealizedPlPct ?? (held.costBasis > 0 ? (held.price / held.costBasis - 1) * 100 : 0) : 0;
+        const prevClose = closes.length >= 2 ? closes[closes.length - 2] : null;
+        const dayCh = ind?.price != null && prevClose ? ind.price - prevClose : null;
+        const dayPct = dayCh != null && prevClose ? (dayCh / prevClose) * 100 : null;
+        const lo = closes.length ? Math.min(...closes) : null;
+        const hi = closes.length ? Math.max(...closes) : null;
+        const vols = detail.bars.map((b) => b.volume).filter((v): v is number => v != null);
+        const avgVol = vols.length ? vols.reduce((a, b) => a + b, 0) / vols.length : null;
         return (
           <section className="grid gap-8 lg:grid-cols-[1fr_320px]">
             <div className="min-w-0">
-              <h2 className="text-2xl font-semibold tracking-tight">
+              <h2 className="flex flex-wrap items-center gap-2.5 text-2xl font-semibold tracking-tight">
                 {detail.info.name}
+                {held && (
+                  <span className="rounded-full bg-series-1/15 px-2.5 py-1 text-xs font-semibold text-series-1">
+                    You own {held.shares}
+                  </span>
+                )}
               </h2>
               {ind?.price != null && (
                 <>
@@ -220,16 +232,18 @@ export default function DiscoverPage() {
                   >
                     {usd(ind.price)}
                   </div>
-                  {ind.return30dPct != null && (
-                    <div
-                      className={`mt-1.5 text-sm font-semibold ${
-                        ind.return30dPct >= 0 ? "text-delta-up" : "text-delta-down"
-                      }`}
-                    >
-                      {ind.return30dPct >= 0 ? "+" : ""}
-                      {ind.return30dPct}% past 30 days
-                    </div>
-                  )}
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 text-sm font-semibold">
+                    {dayCh != null && dayPct != null && Math.abs(dayPct) < 60 && (
+                      <span className={dayCh >= 0 ? "text-delta-up" : "text-delta-down"}>
+                        {dayCh >= 0 ? "+" : "−"}{usd(Math.abs(dayCh))} ({dayPct >= 0 ? "+" : ""}{dayPct.toFixed(2)}%) today
+                      </span>
+                    )}
+                    {ind.return30dPct != null && (
+                      <span className={ind.return30dPct >= 0 ? "text-delta-up" : "text-delta-down"}>
+                        {ind.return30dPct >= 0 ? "+" : ""}{ind.return30dPct}% past 30 days
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
               <div className="mt-6">
@@ -280,8 +294,32 @@ export default function DiscoverPage() {
             </div>
 
             <aside className="flex flex-col gap-4 lg:sticky lg:top-0 lg:self-start">
+              {held && (
+                <div className="rounded-2xl bg-surface p-5">
+                  <h3 className="text-base font-bold tracking-tight">Your position</h3>
+                  <div className="mt-4 flex flex-col gap-2.5 text-sm">
+                    <div className="flex justify-between"><span className="text-ink-2">Shares</span><span className="font-semibold" style={{fontVariantNumeric:"tabular-nums"}}>{held.shares}</span></div>
+                    <div className="flex justify-between"><span className="text-ink-2">Avg cost</span><span className="font-semibold" style={{fontVariantNumeric:"tabular-nums"}}>{usd(held.costBasis)}</span></div>
+                    <div className="flex justify-between"><span className="text-ink-2">Market value</span><span className="font-semibold" style={{fontVariantNumeric:"tabular-nums"}}>{usd(held.shares * held.price)}</span></div>
+                    <div className="flex justify-between border-t border-hairline pt-2.5">
+                      <span className="font-bold">Total P/L</span>
+                      <span className={`font-bold ${heldPl >= 0 ? "text-delta-up" : "text-delta-down"}`} style={{fontVariantNumeric:"tabular-nums"}}>
+                        {heldPl >= 0 ? "+" : "−"}{usd(Math.abs(heldPl))} ({heldPlPct >= 0 ? "+" : ""}{heldPlPct.toFixed(1)}%)
+                      </span>
+                    </div>
+                    {held.todayPct != null && (
+                      <div className="flex justify-between">
+                        <span className="text-ink-2">Today</span>
+                        <span className={`font-semibold ${held.todayPct >= 0 ? "text-delta-up" : "text-delta-down"}`} style={{fontVariantNumeric:"tabular-nums"}}>
+                          {held.todayPct >= 0 ? "+" : ""}{held.todayPct.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="rounded-2xl bg-surface p-5">
-                <h3 className="text-base font-bold tracking-tight">Buy {sym}</h3>
+                <h3 className="text-base font-bold tracking-tight">{held ? `Trade ${sym}` : `Buy ${sym}`}</h3>
                 <div className="mt-4 flex flex-col gap-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">Shares</span>
@@ -310,7 +348,9 @@ export default function DiscoverPage() {
                   </div>
                   <Link
                     href={`/chat?ask=${encodeURIComponent(
-                      `Research ${sym} in depth — live price action, indicators, and recent news. How does it fit my strategy and current portfolio? Only if it genuinely merits a position, run research to propose an appropriately sized order. (For context, I was looking at roughly ${buyQty} shares ≈ ${usd(est)}.)`
+                      held
+                        ? `Research ${sym} in depth — live price action, indicators, and recent news. I currently hold ${held.shares} shares at ${usd(held.costBasis)} avg cost (${heldPlPct >= 0 ? "+" : ""}${heldPlPct.toFixed(1)}% P/L). Should I add, hold, or trim? Only run research to propose an order if a change is genuinely warranted.`
+                        : `Research ${sym} in depth — live price action, indicators, and recent news. How does it fit my strategy and current portfolio? Only if it genuinely merits a position, run research to propose an appropriately sized order. (For context, I was looking at roughly ${buyQty} shares ≈ ${usd(est)}.)`
                     )}`}
                     className="btn-primary w-full px-4 py-3 text-sm"
                   >
@@ -339,6 +379,25 @@ export default function DiscoverPage() {
                   <Stat label="RSI 14" value={ind.rsi14 != null ? String(ind.rsi14) : "—"} tone={ind.rsi14 != null && ind.rsi14 < 35 ? "text-delta-up" : ind.rsi14 != null && ind.rsi14 > 70 ? "text-delta-down" : ""} />
                   <Stat label="Volatility" value={ind.annualizedVolPct != null ? `${ind.annualizedVolPct}%` : "—"} />
                   <Stat label="Drawdown 60d" value={ind.maxDrawdown60dPct != null ? `${ind.maxDrawdown60dPct}%` : "—"} />
+                  <Stat label="Prev close" value={prevClose != null ? usd(prevClose) : "—"} />
+                  <Stat label="Avg volume 30d" value={avgVol != null ? `${(avgVol / 1e6).toFixed(1)}M` : "—"} />
+                  {lo != null && hi != null && (
+                    <div className="col-span-2 rounded-xl bg-page px-3.5 py-3">
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">60-day range</div>
+                      <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold" style={{fontVariantNumeric:"tabular-nums"}}>
+                        {usd(lo)}
+                        <span className="relative h-1 flex-1 rounded-full bg-baseline">
+                          {ind.price != null && hi > lo && (
+                            <span
+                              className="absolute -top-0.5 size-2 rounded-full bg-series-1"
+                              style={{ left: `${Math.min(100, Math.max(0, ((ind.price - lo) / (hi - lo)) * 100))}%` }}
+                            />
+                          )}
+                        </span>
+                        {usd(hi)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </aside>
@@ -366,13 +425,13 @@ export default function DiscoverPage() {
                     <span className="text-sm font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
                       {usd(p.price)}
                     </span>
-                    {p.pl != null && (
+                    {p.unrealizedPlPct != null && (
                       <span
-                        className={`text-xs font-semibold ${p.pl >= 0 ? "text-delta-up" : "text-delta-down"}`}
+                        className={`text-xs font-semibold ${p.unrealizedPlPct >= 0 ? "text-delta-up" : "text-delta-down"}`}
                         style={{ fontVariantNumeric: "tabular-nums" }}
                       >
-                        {p.pl >= 0 ? "+" : ""}
-                        {p.pl.toFixed(2)}%
+                        {p.unrealizedPlPct >= 0 ? "+" : ""}
+                        {p.unrealizedPlPct.toFixed(2)}%
                       </span>
                     )}
                   </span>
