@@ -156,6 +156,10 @@ def update_decision(user_id: str, decision_id: str, fields: dict[str, Any]) -> d
         mapped["safeguards"] = fields["safeguards"]
     if "feedback" in fields:
         mapped["feedback"] = fields["feedback"]
+    if "qty" in fields:
+        mapped["qty"] = fields["qty"]
+    if "estValue" in fields:
+        mapped["est_value"] = fields["estValue"]
     rows = _rest(
         "PATCH",
         "decisions",

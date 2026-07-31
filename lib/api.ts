@@ -156,8 +156,11 @@ export function newThread(): Promise<Thread> {
   return req("/threads", { method: "POST", body: "{}" });
 }
 
-export function approveDecision(id: string): Promise<Decision> {
-  return req(`/decisions/${id}/approve`, { method: "POST", body: "{}" });
+export function approveDecision(id: string, qty?: number): Promise<Decision> {
+  return req(`/decisions/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify(qty ? { qty } : {}),
+  });
 }
 
 export function rejectDecision(id: string, reason?: string): Promise<Decision> {

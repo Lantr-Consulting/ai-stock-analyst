@@ -347,8 +347,12 @@ def account_ts() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+class ApproveRequest(BaseModel):
+    qty: int | None = None  # user-edited share count
+
+
 @app.post("/decisions/{decision_id}/approve")
-def approve(decision_id: str, user: dict = Depends(current_user)) -> dict[str, Any]:
+def approve(decision_id: str, req: ApproveRequest = None, user: dict = Depends(current_user)) -> dict[str, Any]:
     row = _agent_for(user)
     keys = _keys_for(row)
     record = db.get_decision(user["id"], decision_id)
@@ -356,6 +360,10 @@ def approve(decision_id: str, user: dict = Depends(current_user)) -> dict[str, A
         raise HTTPException(status_code=404, detail="decision not found")
     if record["status"] != "proposed":
         raise HTTPException(status_code=409, detail=f"decision is {record['status']}, not proposed")
+    if req and req.qty is not None:
+        if req.qty < 1:
+            raise HTTPException(status_code=400, detail="qty must be at least 1")
+        record["qty"] = req.qty
 
     price = broker.latest_prices([record["symbol"]], keys).get(record["symbol"])
     account = broker.account_snapshot(keys)
@@ -377,6 +385,9 @@ def approve(decision_id: str, user: dict = Depends(current_user)) -> dict[str, A
             user["id"], decision_id, {"status": "blocked", "safeguards": checks}
         )
 
+    db.update_decision(user["id"], decision_id,
+                       {"qty": record["qty"],
+                        "estValue": round(record["qty"] * (price or 0), 2)})
     order = broker.submit_market_order(record["symbol"], record["qty"], record["action"], keys)
     for _ in range(3):
         if order["status"] in TERMINAL_ORDER_STATUSES:

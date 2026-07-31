@@ -13,7 +13,7 @@ import {
   type Thread,
 } from "@/lib/api";
 import type { Decision } from "@/lib/types";
-import { usd } from "@/lib/format";
+import { OrderCard } from "@/components/order-card";
 import { dateTime } from "@/lib/format";
 import type { ChatMessage } from "@/lib/types";
 import { useToast } from "@/components/toast";
@@ -56,7 +56,7 @@ export default function ChatPage() {
     return () => clearInterval(t);
   }, [threadId, thinking]);
 
-  async function resolveInline(d: Decision, action: "approve" | "reject") {
+  async function resolveInline(d: Decision, action: "approve" | "reject", qty?: number) {
     setPending((p) => p.filter((x) => x.id !== d.id));
     toast(
       "info",
@@ -67,7 +67,7 @@ export default function ChatPage() {
     try {
       const updated =
         action === "approve"
-          ? await approveDecision(d.id)
+          ? await approveDecision(d.id, qty)
           : await rejectDecision(d.id);
       if (action === "approve")
         toast(
@@ -281,36 +281,15 @@ export default function ChatPage() {
               Full details & history →
             </a>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {pending.map((d) => (
-              <div
+              <OrderCard
                 key={d.id}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-hairline bg-surface px-3.5 py-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium">
-                    {d.action === "buy" ? "Buy" : "Sell"} {d.qty} {d.symbol}
-                    {d.estValue ? (
-                      <span className="text-ink-muted"> · ~{usd(d.estValue)}</span>
-                    ) : null}
-                  </span>
-                  <p className="line-clamp-1 text-xs text-ink-2">{d.rationale}</p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    onClick={() => resolveInline(d, "approve")}
-                    className="btn-primary px-3 py-1.5 text-sm font-medium "
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => resolveInline(d, "reject")}
-                    className="btn-ghost px-3 py-1.5 text-sm  dark:hover:bg-white/5"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
+                decision={d}
+                busy={false}
+                onApprove={(qty) => resolveInline(d, "approve", qty)}
+                onReject={() => resolveInline(d, "reject")}
+              />
             ))}
           </div>
         </div>
