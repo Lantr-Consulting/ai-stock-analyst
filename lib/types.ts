@@ -32,6 +32,9 @@ export interface Position {
   shares: number;
   costBasis: number; // per share
   price: number; // latest
+  unrealizedPl?: number | null;
+  unrealizedPlPct?: number | null;
+  todayPct?: number | null;
 }
 
 export interface PortfolioSnapshot {

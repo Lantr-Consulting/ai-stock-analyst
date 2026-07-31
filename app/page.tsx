@@ -139,6 +139,59 @@ export default function Dashboard() {
         <StatTile label="Positions" value={String(snapshot.positions.length)} />
       </div>
 
+      {snapshot.positions.length > 0 && (
+        <Card title="Positions" className="!p-0 overflow-hidden">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 border-b border-hairline bg-surface-2 px-5 py-2 text-[11px] font-bold uppercase tracking-wide text-ink-muted max-sm:grid-cols-[1fr_auto_auto]">
+            <span>Asset</span>
+            <span className="text-right">Value</span>
+            <span className="text-right">Total P/L</span>
+            <span className="text-right max-sm:hidden">Today</span>
+          </div>
+          {snapshot.positions
+            .slice()
+            .sort((a, b) => b.shares * b.price - a.shares * a.price)
+            .map((p) => {
+              const value = p.shares * p.price;
+              const pl = p.unrealizedPl ?? (p.price - p.costBasis) * p.shares;
+              const plPct =
+                p.unrealizedPlPct ?? (p.costBasis > 0 ? (p.price / p.costBasis - 1) * 100 : 0);
+              return (
+                <div
+                  key={p.symbol}
+                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 border-b border-hairline px-5 py-3 last:border-0 max-sm:grid-cols-[1fr_auto_auto]"
+                >
+                  <span>
+                    <span className="text-sm font-bold tracking-tight">{p.symbol}</span>
+                    <span className="ml-2 text-xs text-ink-muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {p.shares} × {usd(p.price)}
+                    </span>
+                  </span>
+                  <span className="text-right text-sm font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {usd(value)}
+                  </span>
+                  <span
+                    className={`w-28 text-right text-sm font-semibold ${pl >= 0 ? "text-delta-up" : "text-delta-down"}`}
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {pl >= 0 ? "+" : "−"}{usd(Math.abs(pl))}
+                    <span className="ml-1 text-xs font-medium">
+                      ({plPct >= 0 ? "+" : ""}{plPct.toFixed(1)}%)
+                    </span>
+                  </span>
+                  <span
+                    className={`w-16 text-right text-xs font-semibold max-sm:hidden ${
+                      p.todayPct == null ? "text-ink-muted" : p.todayPct >= 0 ? "text-delta-up" : "text-delta-down"
+                    }`}
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {p.todayPct == null ? "—" : `${p.todayPct >= 0 ? "+" : ""}${p.todayPct.toFixed(1)}%`}
+                  </span>
+                </div>
+              );
+            })}
+        </Card>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title="Allocation">
           {snapshot.positions.length > 0 ? (

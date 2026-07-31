@@ -285,3 +285,7 @@ export interface TickerDetail {
 export function getTicker(symbol: string): Promise<TickerDetail> {
   return req(`/market/ticker/${encodeURIComponent(symbol)}`);
 }
+
+export function getSparklines(symbols: string[]): Promise<{ sparks: Record<string, number[]> }> {
+  return req(`/market/sparklines?symbols=${encodeURIComponent(symbols.join(","))}`);
+}

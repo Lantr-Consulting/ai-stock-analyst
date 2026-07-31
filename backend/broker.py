@@ -85,6 +85,9 @@ def account_snapshot(keys: Keys = None) -> dict[str, Any]:
                 "shares": float(p.qty),
                 "costBasis": float(p.avg_entry_price),
                 "price": float(p.current_price or p.avg_entry_price),
+                "unrealizedPl": float(p.unrealized_pl) if p.unrealized_pl is not None else None,
+                "unrealizedPlPct": float(p.unrealized_plpc) * 100 if p.unrealized_plpc is not None else None,
+                "todayPct": float(p.change_today) * 100 if p.change_today is not None else None,
             }
             for p in positions
         ],

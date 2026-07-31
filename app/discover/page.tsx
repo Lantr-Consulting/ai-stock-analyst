@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   getMarketOverview,
+  getPortfolio,
+  getSparklines,
   getTicker,
   getMe,
   updateSettings,
@@ -106,14 +108,37 @@ export default function DiscoverPage() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const toast = useToast();
 
+  const [mine, setMine] = useState<{
+    positions: { symbol: string; price: number; pl?: number | null }[];
+    sparks: Record<string, number[]>;
+  }>({ positions: [], sparks: {} });
+
   useEffect(() => {
     getMarketOverview().then(setOverview).catch(() => {});
-    getMe()
-      .then((me) => {
+    (async () => {
+      try {
+        const me = await getMe();
         setCanWatch(true);
-        setWatchlist(me.strategy.universe ?? []);
-      })
-      .catch(() => {});
+        const wl = me.strategy.universe ?? [];
+        setWatchlist(wl);
+        let positions: { symbol: string; price: number; pl?: number | null }[] = [];
+        try {
+          const p = await getPortfolio();
+          positions = p.positions.map((x) => ({
+            symbol: x.symbol,
+            price: x.price,
+            pl: x.unrealizedPlPct,
+          }));
+        } catch {}
+        const syms = [...new Set([...positions.map((p) => p.symbol), ...wl])];
+        if (syms.length) {
+          const { sparks } = await getSparklines(syms);
+          setMine({ positions, sparks });
+        } else {
+          setMine({ positions, sparks: {} });
+        }
+      } catch {}
+    })();
   }, []);
 
   async function lookup(sym: string) {
@@ -320,6 +345,79 @@ export default function DiscoverPage() {
           </section>
         );
       })()}
+
+      {(mine.positions.length > 0 || watchlist.length > 0) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {mine.positions.length > 0 && (
+            <Card title="Your stocks" className="!px-2 !py-4 [&>div]:px-3">
+              {mine.positions.map((p) => (
+                <button
+                  key={p.symbol}
+                  onClick={() => lookup(p.symbol)}
+                  className="grid w-full grid-cols-[3.5rem_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5"
+                >
+                  <span className="text-sm font-bold tracking-tight">{p.symbol}</span>
+                  <span className="h-7">
+                    {mine.sparks[p.symbol] && (
+                      <Spark closes={mine.sparks[p.symbol]} className="h-7 w-full" />
+                    )}
+                  </span>
+                  <span className="flex flex-col items-end">
+                    <span className="text-sm font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {usd(p.price)}
+                    </span>
+                    {p.pl != null && (
+                      <span
+                        className={`text-xs font-semibold ${p.pl >= 0 ? "text-delta-up" : "text-delta-down"}`}
+                        style={{ fontVariantNumeric: "tabular-nums" }}
+                      >
+                        {p.pl >= 0 ? "+" : ""}
+                        {p.pl.toFixed(2)}%
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </Card>
+          )}
+          {watchlist.length > 0 && (
+            <Card title="Your watchlist" className="!px-2 !py-4 [&>div]:px-3">
+              {watchlist.map((sym) => {
+                const closes = mine.sparks[sym];
+                const last = closes?.[closes.length - 1];
+                const pct =
+                  closes && closes.length > 1 ? (last! / closes[0] - 1) * 100 : null;
+                return (
+                  <button
+                    key={sym}
+                    onClick={() => lookup(sym)}
+                    className="grid w-full grid-cols-[3.5rem_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5"
+                  >
+                    <span className="text-sm font-bold tracking-tight">{sym}</span>
+                    <span className="h-7">
+                      {closes && <Spark closes={closes} className="h-7 w-full" />}
+                    </span>
+                    <span className="flex flex-col items-end">
+                      <span className="text-sm font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {last != null ? usd(last) : "—"}
+                      </span>
+                      {pct != null && (
+                        <span
+                          className={`text-xs font-semibold ${pct >= 0 ? "text-delta-up" : "text-delta-down"}`}
+                          style={{ fontVariantNumeric: "tabular-nums" }}
+                        >
+                          {pct >= 0 ? "+" : ""}
+                          {pct.toFixed(2)}% 30d
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </Card>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {[

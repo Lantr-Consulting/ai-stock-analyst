@@ -467,6 +467,15 @@ def market_ticker(symbol: str) -> dict[str, Any]:
     return out
 
 
+@app.get("/market/sparklines")
+def market_sparklines(symbols: str) -> dict[str, Any]:
+    syms = [x.strip().upper() for x in symbols.split(",") if x.strip()][:30]
+    try:
+        return {"sparks": broker.multi_closes(syms, 30)}
+    except Exception:
+        return {"sparks": {}}
+
+
 # ---------------------------------------------------------------------------
 # Automations
 # ---------------------------------------------------------------------------
