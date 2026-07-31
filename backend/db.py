@@ -190,3 +190,13 @@ def list_messages(user_id: str, limit: int = 50) -> list[dict[str, Any]]:
         {"id": str(r["id"]), "role": r["role"], "text": r["text"], "at": r["created_at"]}
         for r in reversed(rows)
     ]
+
+
+def supersede_pending(user_id: str) -> int:
+    rows = _rest(
+        "PATCH", "decisions",
+        params={"user_id": f"eq.{user_id}", "status": "eq.proposed"},
+        json={"status": "rejected", "feedback": "Superseded by a newer research cycle."},
+        extra_headers={"Prefer": "return=representation"},
+    )
+    return len(rows or [])
