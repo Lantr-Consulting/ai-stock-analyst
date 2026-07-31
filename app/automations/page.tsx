@@ -149,7 +149,7 @@ export default function AutomationsPage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="ml-auto rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="ml-auto btn-primary px-4 py-2 text-sm font-medium  disabled:opacity-50"
               >
                 Create automation
               </button>
@@ -185,7 +185,7 @@ export default function AutomationsPage() {
                     toast("error", e instanceof Error ? e.message : "Couldn't start the run.");
                   }
                 }}
-                className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90"
+                className="btn-primary px-3.5 py-2 text-sm font-medium "
               >
                 Run now
               </button>
@@ -199,7 +199,7 @@ export default function AutomationsPage() {
                     toast("error", "Couldn't update — try again.");
                   }
                 }}
-                className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+                className="btn-ghost px-3.5 py-2 text-sm font-medium  dark:hover:bg-white/5"
               >
                 {a.enabled ? "Disable" : "Enable"}
               </button>

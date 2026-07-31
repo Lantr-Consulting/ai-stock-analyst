@@ -237,7 +237,7 @@ export default function ProposalsPage() {
           <button
             onClick={research}
             disabled={researching}
-            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
           >
             {researching ? "Researching… (~30s)" : "Run research cycle"}
           </button>
@@ -278,7 +278,7 @@ export default function ProposalsPage() {
             />
             <button
               type="submit"
-              className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+              className="btn-ghost px-3.5 py-2 text-sm font-medium  dark:hover:bg-white/5"
             >
               Steer
             </button>
@@ -410,14 +410,14 @@ function ProposalCard({
             <button
               onClick={() => onResolve("approve")}
               disabled={busy}
-              className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
             >
               {busy ? "Submitting…" : "Approve"}
             </button>
             <button
               onClick={() => setRejecting(true)}
               disabled={busy}
-              className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] disabled:opacity-50 dark:hover:bg-white/5"
+              className="btn-ghost px-3.5 py-2 text-sm font-medium  disabled:opacity-50 dark:hover:bg-white/5"
             >
               Reject
             </button>
@@ -443,7 +443,7 @@ function ProposalCard({
           <button
             type="submit"
             disabled={busy}
-            className="rounded-lg bg-critical px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-full bg-critical px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Rejecting…" : "Confirm reject"}
           </button>

@@ -172,7 +172,7 @@ export default function ChatPage() {
       <aside className="order-last w-56 shrink-0 self-start sticky top-0 max-h-full overflow-y-auto max-lg:hidden">
         <button
           onClick={startNewChat}
-          className="mb-3 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+          className="mb-3 w-full btn-ghost px-3 py-2 text-sm font-medium  dark:hover:bg-white/5"
         >
           + New chat
         </button>
@@ -212,7 +212,7 @@ export default function ChatPage() {
         </div>
         <button
           onClick={startNewChat}
-          className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] lg:hidden dark:hover:bg-white/5"
+          className="btn-ghost px-3.5 py-2 text-sm font-medium  lg:hidden dark:hover:bg-white/5"
         >
           + New chat
         </button>
@@ -249,10 +249,10 @@ export default function ChatPage() {
             className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
           >
             <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+              className={`max-w-[85%] whitespace-pre-wrap text-sm leading-relaxed animate-[msg-in_.18s_ease-out] ${
                 m.role === "user"
-                  ? "bg-series-1 text-white"
-                  : "border border-hairline bg-surface text-ink"
+                  ? "rounded-3xl rounded-br-md bg-accent px-4 py-2.5 font-medium text-black"
+                  : "rounded-3xl rounded-bl-md bg-surface px-4.5 py-3 text-ink shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
               }`}
             >
               {m.text}
@@ -264,7 +264,7 @@ export default function ChatPage() {
           </div>
         ))}
         {thinking && (
-          <div className="flex items-center gap-1.5 rounded-2xl border border-hairline bg-surface px-4 py-3 text-sm text-ink-muted self-start">
+          <div className="flex items-center gap-1.5 rounded-3xl rounded-bl-md bg-surface px-4 py-3 text-sm text-ink-muted self-start">
             <span className="size-1.5 animate-pulse rounded-full bg-ink-muted" />
             <span className="size-1.5 animate-pulse rounded-full bg-ink-muted [animation-delay:150ms]" />
             <span className="size-1.5 animate-pulse rounded-full bg-ink-muted [animation-delay:300ms]" />
@@ -299,13 +299,13 @@ export default function ChatPage() {
                 <div className="flex shrink-0 gap-2">
                   <button
                     onClick={() => resolveInline(d, "approve")}
-                    className="rounded-lg bg-series-1 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                    className="btn-primary px-3 py-1.5 text-sm font-medium "
                   >
                     Approve
                   </button>
                   <button
                     onClick={() => resolveInline(d, "reject")}
-                    className="rounded-lg border border-hairline px-3 py-1.5 text-sm text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+                    className="btn-ghost px-3 py-1.5 text-sm  dark:hover:bg-white/5"
                   >
                     Reject
                   </button>
@@ -345,7 +345,7 @@ export default function ChatPage() {
           <button
             type="submit"
             disabled={thinking}
-            className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="btn-primary px-4 py-2 text-sm font-medium  disabled:opacity-50"
           >
             Send
           </button>

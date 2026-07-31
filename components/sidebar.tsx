@@ -92,13 +92,13 @@ const NAV = [
 function Wordmark() {
   return (
     <div className="flex items-center gap-2.5 px-3 pb-6 pt-1">
-      <span className="flex size-7 items-center justify-center rounded-lg bg-series-1">
+      <span className="flex size-7 items-center justify-center rounded-lg bg-accent">
         <svg
           aria-hidden
           viewBox="0 0 32 32"
           className="size-4"
           fill="none"
-          stroke="#fff"
+          stroke="#000"
           strokeWidth={3}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -121,7 +121,7 @@ function Wordmark() {
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface px-3 py-5 max-md:hidden">
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-page px-3 py-5 max-md:hidden">
       <Wordmark />
       <nav className="flex flex-col gap-0.5">
         {NAV.map((item) => {
@@ -175,7 +175,7 @@ function AccountBox() {
     return (
       <Link
         href="/signin"
-        className="rounded-lg border border-hairline px-3 py-2 text-center text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+        className="btn-ghost px-3 py-2 text-center text-sm font-medium  dark:hover:bg-white/5"
       >
         Sign in
       </Link>
@@ -198,7 +198,7 @@ function AccountBox() {
 export function MobileNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1 overflow-x-auto border-b border-hairline bg-surface px-3 py-2 md:hidden">
+    <nav className="flex gap-1 overflow-x-auto border-b border-hairline bg-page px-3 py-2 md:hidden">
       {NAV.map((item) => {
         const active = pathname === item.href;
         return (

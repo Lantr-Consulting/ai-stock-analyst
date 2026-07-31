@@ -116,7 +116,7 @@ export default function SetupPage() {
           <button
             onClick={update}
             disabled={busy || status === "signedOut"}
-            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
           >
             {busy ? "Interpreting…" : "Update profile"}
           </button>
@@ -358,7 +358,7 @@ function ActivateCard({
             <button
               onClick={activate}
               disabled={busy || universe.length === 0}
-              className="shrink-0 rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="shrink-0 btn-primary px-4 py-2 text-sm font-medium  disabled:opacity-50"
             >
               {busy ? "Activating…" : "Activate agent"}
             </button>

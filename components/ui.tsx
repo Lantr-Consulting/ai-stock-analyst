@@ -3,7 +3,7 @@ import type { DecisionStatus, SafeguardCheck } from "@/lib/types";
 
 export function SimulatedBanner() {
   return (
-    <div className="flex items-center gap-2 border-b border-hairline bg-warning/[0.08] px-5 py-2 text-xs text-ink-2">
+    <div className="flex items-center gap-2 border-b border-hairline bg-page px-5 py-1.5 text-[11px] text-ink-muted">
       <span aria-hidden className="inline-block size-2 rounded-full bg-warning" />
       <span>
         <strong className="font-semibold text-ink">Simulated</strong> — this is a
@@ -27,7 +27,7 @@ export function Card({
 }) {
   return (
     <section
-      className={`rounded-xl border border-hairline bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none ${className}`}
+      className={`rounded-2xl bg-surface p-5 ${className}`}
     >
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -54,7 +54,7 @@ export function StatTile({
   deltaGood?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-hairline bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none">
+    <div className="rounded-2xl bg-surface p-4">
       <div className="text-xs text-ink-muted">{label}</div>
       <div
         className="mt-1 text-2xl font-semibold tracking-tight"

@@ -88,7 +88,7 @@ export default function Dashboard() {
         {pending.length > 0 && (
           <Link
             href="/proposals"
-            className="rounded-lg bg-series-1 px-3.5 py-2 text-sm font-medium text-white hover:opacity-90"
+            className="btn-primary px-3.5 py-2 text-sm font-medium "
           >
             {pending.length} trade{pending.length > 1 ? "s" : ""} awaiting
             approval
