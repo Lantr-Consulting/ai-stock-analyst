@@ -90,6 +90,7 @@ export interface Decision {
   status: DecisionStatus;
   order?: OrderRecord;
   feedback?: string | null;
+  runId?: string | null;
 }
 
 export type ActivityKind =

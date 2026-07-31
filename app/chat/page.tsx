@@ -91,7 +91,38 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="flex flex-1 gap-6">
+      <aside className="w-56 shrink-0 max-lg:hidden">
+        <button
+          onClick={startNewChat}
+          className="mb-3 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+        >
+          + New chat
+        </button>
+        <div className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+          Conversations
+        </div>
+        <nav className="flex flex-col gap-0.5">
+          {threads.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setThreadId(t.id)}
+              className={`truncate rounded-lg px-3 py-2 text-left text-sm ${
+                t.id === threadId
+                  ? "bg-ink/[0.06] font-medium text-ink dark:bg-white/10"
+                  : "text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+              }`}
+            >
+              {t.title}
+            </button>
+          ))}
+          {threads.length === 0 && (
+            <p className="px-3 text-xs text-ink-muted">No conversations yet.</p>
+          )}
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
@@ -104,14 +135,14 @@ export default function ChatPage() {
         </div>
         <button
           onClick={startNewChat}
-          className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+          className="rounded-lg border border-hairline px-3.5 py-2 text-sm font-medium text-ink-2 hover:bg-ink/[0.04] lg:hidden dark:hover:bg-white/5"
         >
           + New chat
         </button>
       </header>
 
       {threads.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
           {threads.slice(0, 8).map((t) => (
             <button
               key={t.id}
@@ -203,6 +234,7 @@ export default function ChatPage() {
           Answers are grounded in the live paper account and the agent&apos;s
           recorded decisions. Simulated — not financial advice.
         </p>
+      </div>
       </div>
     </div>
   );

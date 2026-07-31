@@ -27,6 +27,7 @@ export default function ProposalsPage() {
   const [runs, setRuns] = useState<ResearchRun[]>([]);
   const toast = useToast();
   const [steerText, setSteerText] = useState("");
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const offline = status !== "live";
   const activeRun = runs.find((r) => r.status === "running");
 
@@ -143,12 +144,74 @@ export default function ProposalsPage() {
     setBusyId(null);
   }
 
-  const all = decisions ?? [];
+  const all = (decisions ?? []).filter(
+    (d) => !selectedRunId || d.runId === selectedRunId
+  );
   const pending = all.filter((d) => d.status === "proposed");
   const resolved = all.filter((d) => d.status !== "proposed");
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-1 gap-6">
+      {runs.length > 0 && (
+        <aside className="w-56 shrink-0 max-lg:hidden">
+          <div className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+            Research sessions
+          </div>
+          <nav className="flex flex-col gap-0.5">
+            <button
+              onClick={() => setSelectedRunId(null)}
+              className={`rounded-lg px-3 py-2 text-left text-sm ${
+                !selectedRunId
+                  ? "bg-ink/[0.06] font-medium text-ink dark:bg-white/10"
+                  : "text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
+              }`}
+            >
+              All proposals
+            </button>
+            {runs.slice(0, 15).map((r) => {
+              const orders = r.decisions.filter((d) => d.symbol);
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setSelectedRunId(r.id)}
+                  className={`rounded-lg px-3 py-2 text-left ${
+                    selectedRunId === r.id
+                      ? "bg-ink/[0.06] dark:bg-white/10"
+                      : "hover:bg-ink/[0.04] dark:hover:bg-white/5"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 text-sm">
+                    <span
+                      aria-hidden
+                      className={`size-1.5 shrink-0 rounded-full ${
+                        r.status === "running"
+                          ? "animate-pulse bg-series-1"
+                          : r.status === "error"
+                            ? "bg-critical"
+                            : "bg-good"
+                      }`}
+                    />
+                    <span className={selectedRunId === r.id ? "font-medium" : "text-ink-2"}>
+                      {r.status === "running"
+                        ? "Researching…"
+                        : r.status === "error"
+                          ? "Failed run"
+                          : orders.length > 0
+                            ? orders.map((o) => o.symbol).join(", ")
+                            : "Hold"}
+                    </span>
+                  </span>
+                  <span className="block pl-3 text-[11px] text-ink-muted">
+                    {dateTime(r.started_at)}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
@@ -308,6 +371,7 @@ export default function ProposalsPage() {
           </Card>
         </>
       )}
+      </div>
     </div>
   );
 }
