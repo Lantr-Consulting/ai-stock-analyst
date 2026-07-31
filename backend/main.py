@@ -244,7 +244,13 @@ def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
             lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
         elif r.get("symbol") and r["status"] in ("approved", "filled"):
             lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
-    plan = research_agent.run_research_cycle(strategy, safeguards, keys, lessons[:12])
+    _research_in_flight.add(user["id"])
+    try:
+        plan = research_agent.run_research_cycle(strategy, safeguards, keys, lessons[:12])
+    finally:
+        _research_in_flight.discard(user["id"])
+    # A new cycle supersedes any still-pending proposals from earlier cycles.
+    db.supersede_pending(user["id"])
     evidence = plan.get("evidence", [])
     rationale = plan.get("rationale", "")
     target = [
