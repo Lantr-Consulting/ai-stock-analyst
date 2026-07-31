@@ -241,9 +241,28 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
             elif r.get("symbol") and r["status"] in ("approved", "filled"):
                 lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
+        pre = broker.account_snapshot(keys)
+        trades_used = broker.orders_submitted_today(keys)
+        trades_left = max(0, int(safeguards["maxTradesPerDay"]) - trades_used)
+        max_order = safeguards["maxOrderPct"] / 100 * pre["equity"]
+        open_syms = sorted({o["symbol"] for o in pre.get("openOrders", [])})
+        held_txt = ", ".join(
+            f"{p['symbol']} ${p['shares']*p['price']:,.0f}" for p in pre["positions"]
+        ) or "none"
+        constraints = (
+            f"equity ${pre['equity']:,.0f}; cash ${pre['cash']:,.0f}; "
+            f"max single order ${max_order:,.0f} ({safeguards['maxOrderPct']}% of equity); "
+            f"keep cash above {safeguards['minCashPct']}% of equity; "
+            f"single position cap {safeguards['maxPositionPct']}% "
+            f"(core ETFs {safeguards.get('maxCorePositionPct', 50)}%); "
+            f"trades remaining today: {trades_left} — propose AT MOST {trades_left} orders; "
+            f"positions held: {held_txt}; "
+            f"open orders (do NOT re-propose these symbols): {', '.join(open_syms) or 'none'}"
+        )
         plan = research_agent.run_research_cycle(
             strategy, safeguards, keys, lessons[:12],
             mission=automation["prompt"] if automation else None,
+            constraints=constraints,
         )
         db.supersede_pending(user["id"])
         evidence = plan.get("evidence", [])
@@ -261,24 +280,53 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
         pending = db.pending_symbols(user["id"]) | {
             o["symbol"] for o in account.get("openOrders", [])
         }
+        held_val = {p["symbol"]: p["shares"] * p["price"] for p in account["positions"]}
+        equity = account["equity"]
         proposed_count = 0
+        skipped: list[str] = []
         for o in orders:
             symbol = str(o["symbol"]).upper(); qty = int(o["qty"])
             action = "sell" if o.get("action") == "sell" else "buy"
             price = broker.latest_prices([symbol], keys).get(symbol)
-            if price is None:
+            if price is None or price <= 0:
+                continue
+            orig_qty = qty
+            if action == "buy":
+                # Pre-size to the tightest limit so proposals pass by construction.
+                cap = (safeguards["maxCorePositionPct"]
+                       if symbol in safeguards.get("coreSymbols", [])
+                       else safeguards["maxPositionPct"])
+                fits = [
+                    safeguards["maxOrderPct"] / 100 * equity,                      # order size
+                    cap / 100 * equity - held_val.get(symbol, 0.0),                # position cap
+                    account["cash"] - safeguards["minCashPct"] / 100 * equity,     # cash floor
+                ]
+                qty = min(qty, int(min(fits) // price))
+            if qty < 1:
+                skipped.append(f"{action} {symbol} (no room inside your limits)")
                 continue
             checks = risk.run_safeguards(action=action, symbol=symbol, qty=qty, price=price,
                 account=account, safeguards=safeguards,
                 trades_today=trades_today + proposed_count, pending_symbols=pending,
                 asset_check=broker.asset_ok(symbol, keys))
-            ok = risk.passed(checks)
-            if ok:
-                proposed_count += 1; pending.add(symbol)
+            if not risk.passed(checks):
+                fails = [c["name"] for c in checks if c["status"] == "fail"]
+                skipped.append(f"{action} {qty} {symbol} ({', '.join(fails)})")
+                continue
+            proposed_count += 1; pending.add(symbol)
+            why = o.get("why", rationale)
+            if qty != orig_qty:
+                why = f"{why} (sized down from {orig_qty} to {qty} shares to fit your safeguards)"
             db.add_decision(user["id"], {"action": action, "symbol": symbol, "qty": qty,
-                "estValue": round(qty * price, 2), "rationale": o.get("why", rationale),
+                "estValue": round(qty * price, 2), "rationale": why,
                 "strategyVersion": row["strategy_version"], "evidence": [],
-                "safeguards": checks, "status": "proposed" if ok else "blocked", "runId": run_id})
+                "safeguards": checks, "status": "proposed", "runId": run_id})
+        if skipped:
+            db._rest("PATCH", "decisions",
+                     params={"id": f"eq.{plan_record['id']}"},
+                     json={"rationale": plan_record["rationale"]
+                           + "\n\nNot proposed (outside your safeguards): "
+                           + "; ".join(skipped)})
         summary = rationale or "Run complete — no findings this time."
         if orders:
             summary += "\n\nProposed: " + ", ".join(

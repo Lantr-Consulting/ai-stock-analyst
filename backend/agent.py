@@ -150,6 +150,7 @@ def run_research_cycle(
     keys: broker.Keys = None,
     lessons: list[str] | None = None,
     mission: str | None = None,
+    constraints: str | None = None,
 ) -> dict[str, Any]:
     """Returns {action, symbol, qty, rationale, evidence:[...]}."""
     prompt = ChatPromptTemplate.from_messages(
@@ -169,6 +170,7 @@ def run_research_cycle(
     result = executor.invoke(
         {
             "strategy": json.dumps(strategy)
+            + (f"\n\nLIVE LIMITS RIGHT NOW — every order MUST fit inside these or it will be discarded: {constraints}" if constraints else "")
             + (f"\n\nTHIS RUN'S MISSION (from the user's automation — follow it; if it asks for a report or summary rather than trades, put the full report in 'rationale' and return zero orders): {mission}" if mission else ""),
             "rules": "\n".join(f"- {r}" for r in strategy.get("rules", [])),
             "universe": ", ".join(strategy.get("universe", [])),
