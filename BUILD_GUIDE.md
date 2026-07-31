@@ -194,7 +194,38 @@ LLM-as-judge + one measured improvement, and `BLUEPRINT.md` as the Demo Day
 package. Two Dependabot alerts remain that only clear with the langchain 1.x
 (LangGraph) migration.
 
-## 7. Course-tuning notes
+## 7. Module-by-module course mapping
+
+How each module of the AI Agent Builder track maps onto this project — what
+the sample demonstrates, the repo artifact a mentor shows, and how the
+module's checkpoint reads when tailored to it. (Module files live in
+`portal/lib/curriculum/modules/`; "tag" = git tag in this repo.)
+
+| Module | Tailored to this project | Show | Checkpoint |
+|---|---|---|---|
+| **M1 Big Picture** | Sidekick stays the generic example; this project becomes the worked MVP brief: the §1 one-liner, journey (describe → review → activate → research → approve → track), MCP statement, non-goals (no real money, no options/short/margin) | §1–2 of this guide | Student writes their own brief; mentor contrasts with ours |
+| **M2 Workshop** | Unchanged (terminal, folders) | — | — |
+| **M3 Claude Code** | Unchanged mechanics; our sessions are the case study: every feature here was directed, reviewed, then shipped | commit history | — |
+| **M4 GitHub** | Real story: the repo moved person → org, went public **after a history secret-scan**; commit-email ↔ deploy linkage | `git log`, §5.7 | First repo + the "scan before public" habit |
+| **M5 First Ship** | Mock-data-shaped-like-real-records trick; Vercel push-to-deploy; the CLI-deploy BLOCKED saga | tag `milestone-1-first-ship` | Six screens live at a real URL |
+| **M6 Design** | Token-driven theming (one `globals.css` block per theme = light mode nearly free); order-ticket pattern; toasts + optimistic UI | tag `milestone-2-design-pass` vs `main` | A design pass verified by screenshots, not vibes |
+| **M7 Brain** | `/interpret-profile`: plain English + current state → versioned JSON strategy (JSON-mode prompting); grounded `/chat`; "never assert market facts from memory" | tag `milestone-3-the-brain`, `main.py` prompts | Instructions round-trip into a strategy the student can read back |
+| **M8 Backend** | FastAPI on Railway; deploy-from-subdir, Procfile, env vars, `--workers 2` + DB locks when things run long | Railway dashboard + `Procfile` | Frontend talks to the live backend |
+| **M9 Hands** | The centerpiece: LangChain tools (portfolio/prices/bars/news/movers/indicators), evidence capture, **risk engine blocking the model's own $34.7k proposal**, tool errors returned as data | tag `milestone-4-hands`, `risk.py`, `agent.py` | Agent proposes; a coded check visibly blocks something |
+| **M10 Connections** | Alpaca as "other people's superpowers": trading + market data + news + screener, all free-tier; Discover page as the payoff | `broker.py`, `/discover` | Live external data on screen with attribution |
+| **M11 Memory** | Supabase via PostgREST; decisions/threads/runs/automations schema; supersession; feedback column | `schema.sql`, `db.py`, tag `milestone-5-memory-accounts` | A record written today is still there tomorrow |
+| **M12 Accounts** | Magic link, RLS read-own policies, per-user broker keys with shared-demo fallback; the email-rate-limit + Site-URL gotchas | `auth.py`, Supabase dashboard | Two accounts see two different worlds |
+| **M13 Evals** | *Still open in the sample* — the planned set: safeguard enforcement, decision grounding (does evidence support the order?), refusal on stale facts, feedback obedience; LLM-as-judge; one measured improvement | §6 | Committed eval set + one before/after number |
+| **M14 Demo Day** | This guide ≈ the blueprint artifact; add `BLUEPRINT.md` (one-pager, as-built map, remaining milestones, risks) + 2-minute pitch | `BUILD_GUIDE.md` | The Demo Day package, verbatim from the course |
+
+**New module candidates** (from phases 6–10, the material the current course
+doesn't cover): **"Feedback Lab"** (ship → watch a real user → onboarding/
+ownership/coherence fixes; every §5 lesson began as a complaint), **"Always
+on"** (automations + scheduler + cross-worker claims), and **"Feel like a
+product"** (order tickets, progress bars, notification bell, light mode,
+custom subdomain on lantr.site).
+
+## 8. Course-tuning notes
 
 - Phases 1–5 validate the existing M1–M12 arc almost exactly; this repo's
   tags (`milestone-1-first-ship` … `milestone-6b-automations`) are checkout
