@@ -307,23 +307,27 @@ export default function ProposalsPage() {
         </Card>
       )}
 
-      {pending.map((d) => (
-        <ProposalCard
-          key={d.id}
-          decision={d}
-          busy={busyId === d.id}
-          onResolve={offline ? undefined : (a, r, q) => resolve(d.id, a, r, q)}
-        />
-      ))}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {pending.map((d) => (
+          <ProposalCard
+            key={d.id}
+            decision={d}
+            busy={busyId === d.id}
+            onResolve={offline ? undefined : (a, r, q) => resolve(d.id, a, r, q)}
+          />
+        ))}
+      </div>
 
       {resolved.length > 0 && (
         <h2 className="mt-2 text-sm font-semibold text-ink-muted">
           Recently resolved
         </h2>
       )}
-      {resolved.slice(0, 8).map((d) => (
-        <ProposalCard key={d.id} decision={d} busy={false} />
-      ))}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {resolved.slice(0, 8).map((d) => (
+          <ProposalCard key={d.id} decision={d} busy={false} />
+        ))}
+      </div>
 
       {runs.length > 0 && (
         <>
