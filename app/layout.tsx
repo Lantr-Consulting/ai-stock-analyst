@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { MobileNav, Sidebar } from "@/components/sidebar";
-import { TopBar } from "@/components/topbar";
 import { ToastProvider } from "@/components/toast";
 
 const geistSans = Geist({
@@ -15,10 +13,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Serif display voice for the marketing landing (FORGE, matching lantr.site).
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
-  title: "AI Stock Analyst — paper trading",
+  title: "AI Stock Analyst — your personal AI portfolio manager",
   description:
-    "Your personal AI stock analyst and portfolio manager. Simulated paper trading — a Lantr sample project.",
+    "An AI analyst that researches the live market, proposes safeguard-checked trades you approve with one click, and runs missions while you're away. Simulated paper trading — a Lantr sample project.",
 };
 
 export default function RootLayout({
@@ -29,19 +35,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="flex h-screen overflow-hidden">
-        <ToastProvider>
-        <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <TopBar />
-          <MobileNav />
-          <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-y-auto px-5 py-8">
-            {children}
-          </main>
-        </div>
-        </ToastProvider>
+      <body className="min-h-screen">
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );
