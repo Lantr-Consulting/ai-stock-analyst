@@ -59,7 +59,7 @@ export function ValueChart({ points }: { points: ValuePoint[] }) {
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
         role="img"
-        aria-label="Portfolio value over the last two months"
+        aria-label="最近两个月的组合资产变化"
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
       >

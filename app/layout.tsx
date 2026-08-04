@@ -22,9 +22,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "AI Stock Analyst — your personal AI portfolio manager",
+  title: "AI Stock Analyst｜Lantr 往届学生作品",
   description:
-    "An AI analyst that researches the live market, proposes safeguard-checked trades you approve with one click, and runs missions while you're away. Simulated paper trading — a Lantr sample project.",
+    "一位 Lantr 往届学生完成的 AI 投资研究助手：查看实时行情、整理交易建议，并在用户确认后进行模拟交易。课程结束后由 Lantr 继续托管。",
 };
 
 export default function RootLayout({
@@ -34,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="zh-CN"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-screen">

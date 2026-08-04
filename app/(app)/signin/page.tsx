@@ -26,8 +26,8 @@ export default function SignInPage() {
     if (error) {
       setError(
         mode === "signin" && error.message.includes("Invalid login credentials")
-          ? "Wrong email or password — or no account yet. Try “Create account”."
-          : error.message
+          ? "邮箱或密码不正确；如果还没有账户，请先注册。"
+          : "登录遇到问题，请检查邮箱和密码后重试。"
       );
       setBusy(false);
       return;
@@ -39,11 +39,10 @@ export default function SignInPage() {
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5">
       <header className="text-center">
         <h1 className="text-xl font-semibold tracking-tight">
-          {mode === "signin" ? "Sign in" : "Create your account"}
+          {mode === "signin" ? "登录" : "创建账户"}
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
-          One agent per person. Your profile, strategy, and decisions are
-          yours alone.
+          每个账户都有独立的投资偏好、研究策略和决策记录。
         </p>
       </header>
       <Card>
@@ -59,13 +58,13 @@ export default function SignInPage() {
                 mode === m ? "bg-accent text-black" : "text-ink-2 hover:text-ink"
               }`}
             >
-              {m === "signin" ? "Sign in" : "Create account"}
+              {m === "signin" ? "登录" : "注册"}
             </button>
           ))}
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3">
           <label className="text-sm font-medium" htmlFor="email">
-            Email
+            邮箱
           </label>
           <input
             id="email"
@@ -78,7 +77,7 @@ export default function SignInPage() {
             className="rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-accent"
           />
           <label className="text-sm font-medium" htmlFor="password">
-            Password
+            密码
           </label>
           <input
             id="password"
@@ -88,7 +87,7 @@ export default function SignInPage() {
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={mode === "signup" ? "At least 6 characters" : "Your password"}
+            placeholder={mode === "signup" ? "至少 6 个字符" : "请输入密码"}
             className="rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-accent"
           />
           <button
@@ -97,16 +96,16 @@ export default function SignInPage() {
             className="btn-primary px-3.5 py-2.5 text-sm"
           >
             {busy
-              ? "One moment…"
+              ? "请稍候…"
               : mode === "signin"
-                ? "Sign in"
-                : "Create account & continue"}
+                ? "登录"
+                : "注册并继续"}
           </button>
           {error && <p className="text-xs text-critical">{error}</p>}
         </form>
       </Card>
       <p className="text-center text-xs text-ink-muted">
-        Simulated paper trading only — no real money, not financial advice.
+        仅用于模拟交易，不涉及真实资金，也不构成投资建议。
       </p>
     </div>
   );

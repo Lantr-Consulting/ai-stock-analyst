@@ -44,14 +44,14 @@ export default function ProposalsPage() {
             setResearching(false);
             setNote(
               done.status === "error"
-                ? `Research run failed: ${done.error ?? "unknown error"}`
-                : "Research complete — the plan and proposals are below."
+                ? `本轮研究失败：${done.error ?? "未知错误"}`
+                : "研究已完成，结论和交易建议如下。"
             );
             toast(
               done.status === "error" ? "error" : "success",
               done.status === "error"
-                ? "Research run failed — see details on the page."
-                : "Research complete — new proposals are ready."
+                ? "本轮研究失败，请查看页面中的详细信息。"
+                : "研究已完成，新的交易建议可以查看了。"
             );
           }
         })
@@ -89,16 +89,16 @@ export default function ProposalsPage() {
       await runResearchCycle();
       const rs = await getResearchRuns();
       setRuns(rs);
-      setNote("Research started — it keeps running even if you leave this page.");
-      toast("info", "Research started — the agent is reading the market now.");
+      setNote("研究已经开始；即使离开这个页面，任务也会继续运行。 ");
+      toast("info", "研究已经开始，助手正在读取市场数据。 ");
     } catch (e) {
       setResearching(false);
       setNote(
         e instanceof Error && e.message.includes("activate")
-          ? "Finish agent setup first — describe how you invest and activate your agent."
+          ? "请先完成投资偏好设置并启用研究助手。"
           : e instanceof Error && e.message.includes("already running")
-            ? "A research cycle is already running — results appear when it finishes."
-            : "Couldn't run a research cycle — is the backend reachable?"
+            ? "已有一轮研究正在运行，完成后会自动显示结果。"
+            : "暂时无法开始研究，请稍后再试。"
       );
     }
   }
@@ -117,8 +117,8 @@ export default function ProposalsPage() {
     toast(
       "info",
       action === "approve"
-        ? "Approved — submitting the order to your paper account…"
-        : "Rejected — the agent will factor this into future research."
+        ? "已确认，正在向模拟账户提交订单…"
+        : "已拒绝，研究助手会在之后的研究中参考这个反馈。"
     );
     try {
       const updated =
@@ -132,15 +132,15 @@ export default function ProposalsPage() {
         toast(
           updated.status === "blocked" ? "error" : "success",
           updated.status === "filled"
-            ? `Order filled${updated.order?.fillPrice ? ` @ $${updated.order.fillPrice}` : ""}.`
+            ? `模拟订单已成交${updated.order?.fillPrice ? `，成交价 $${updated.order.fillPrice}` : ""}。`
             : updated.status === "blocked"
-              ? "Order blocked — conditions changed since the proposal. See the safeguard checks."
-              : "Order accepted by Alpaca — it fills when the market opens."
+              ? "订单已被风控拦截：确认时的市场条件与建议生成时不同，请查看检查结果。"
+              : "模拟订单已被 Alpaca 接收，将在美股开盘后撮合。"
         );
       }
     } catch {
       setDecisions(before);
-      toast("error", `Couldn't ${action} — check your connection and try again.`);
+      toast("error", `${action === "approve" ? "确认" : "拒绝"}失败，请检查连接后重试。`);
     }
     setBusyId(null);
   }
@@ -152,12 +152,12 @@ export default function ProposalsPage() {
   const pending = shown.filter((d) => d.status === "proposed");
   const resolved = shown.filter((d) => d.status !== "proposed");
   const FILTERS: { v: "all" | DecisionStatus; label: string }[] = [
-    { v: "all", label: "All" },
-    { v: "proposed", label: "Awaiting approval" },
-    { v: "approved", label: "Approved" },
-    { v: "filled", label: "Filled" },
-    { v: "blocked", label: "Blocked" },
-    { v: "rejected", label: "Rejected" },
+    { v: "all", label: "全部" },
+    { v: "proposed", label: "待确认" },
+    { v: "approved", label: "已确认" },
+    { v: "filled", label: "已成交" },
+    { v: "blocked", label: "已拦截" },
+    { v: "rejected", label: "已拒绝" },
   ];
 
   return (
@@ -165,7 +165,7 @@ export default function ProposalsPage() {
       {runs.length > 0 && (
         <aside className="order-last w-56 shrink-0 self-start sticky top-0 max-h-[85vh] overflow-y-auto max-lg:hidden">
           <div className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-            Research sessions
+            研究记录
           </div>
           <nav className="flex flex-col gap-0.5">
             <button
@@ -176,7 +176,7 @@ export default function ProposalsPage() {
                   : "text-ink-2 hover:bg-ink/[0.04] dark:hover:bg-white/5"
               }`}
             >
-              All proposals
+              全部建议
             </button>
             {runs.slice(0, 15).map((r) => {
               const orders = r.decisions.filter((d) => d.symbol);
@@ -203,12 +203,12 @@ export default function ProposalsPage() {
                     />
                     <span className={selectedRunId === r.id ? "font-medium" : "text-ink-2"}>
                       {r.status === "running"
-                        ? "Researching…"
+                        ? "研究中…"
                         : r.status === "error"
-                          ? "Failed run"
+                          ? "运行失败"
                           : orders.length > 0
                             ? orders.map((o) => o.symbol).join(", ")
-                            : "Hold"}
+                            : "继续持有"}
                     </span>
                   </span>
                   <span className="block pl-3 text-[11px] text-ink-muted">
@@ -225,21 +225,21 @@ export default function ProposalsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
-            Trade proposals
+            研究助手
           </h1>
           <p className="mt-0.5 text-sm text-ink-muted">
             {status === "signedOut" ? (
               <>
-                Sample data —{" "}
+                当前展示演示数据。{" "}
                 <Link href="/signin" className="font-medium text-series-1 hover:underline">
-                  sign in
+                  登录
                 </Link>{" "}
-                to run your own agent
+                后可运行你的研究助手
               </>
             ) : status === "offline" ? (
-              "Sample data — backend unreachable"
+              "暂时无法连接服务，当前展示演示数据"
             ) : (
-              "Every proposed order shows its evidence and safeguard checks. Nothing is submitted to the paper account until you approve it."
+              "每条建议都会列出依据与风控检查；未经你确认，不会向模拟账户提交任何订单。"
             )}
           </p>
         </div>
@@ -249,7 +249,7 @@ export default function ProposalsPage() {
             disabled={researching}
             className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
           >
-            {researching ? "Researching… (~30s)" : "Run research cycle"}
+            {researching ? "研究中…（约 30 秒）" : "开始一轮研究"}
           </button>
         )}
       </header>
@@ -284,10 +284,9 @@ export default function ProposalsPage() {
         <Card className="ring-1 ring-series-1/40">
           <div className="flex items-center gap-2 text-sm">
             <span className="size-2 animate-pulse rounded-full bg-series-1" />
-            <span className="font-medium">Research in progress</span>
+            <span className="font-medium">正在研究</span>
             <span className="text-ink-muted">
-              started {dateTime(activeRun.started_at)} — reading prices, news,
-              movers, and indicators…
+              开始于 {dateTime(activeRun.started_at)}，正在读取价格、新闻、异动和技术指标…
             </span>
           </div>
           <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-baseline">
@@ -307,7 +306,7 @@ export default function ProposalsPage() {
                 toast("success", r.note);
                 setSteerText("");
               } catch {
-                setNote("Couldn't save steering — try again.");
+                setNote("暂时无法补充要求，请稍后再试。 ");
               }
             }}
             className="mt-3 flex gap-2"
@@ -315,14 +314,14 @@ export default function ProposalsPage() {
             <input
               value={steerText}
               onChange={(e) => setSteerText(e.target.value)}
-              placeholder="Steer the research… e.g. 'focus on small-cap AI names today'"
+              placeholder="补充本轮要求，例如：今天重点关注小市值 AI 公司"
               className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
             />
             <button
               type="submit"
               className="btn-ghost px-3.5 py-2 text-sm font-medium  dark:hover:bg-white/5"
             >
-              Steer
+              提交补充
             </button>
           </form>
         </Card>
@@ -334,9 +333,8 @@ export default function ProposalsPage() {
       {decisions !== null && filter === "all" && pending.length === 0 && (
         <Card>
           <p className="text-sm text-ink-2">
-            No trades waiting for approval. Run a research cycle — the agent
-            reads live prices and news, then proposes a trade only if it passes
-            your safeguards.
+            目前没有待确认的交易。开始一轮研究后，助手会读取实时价格和新闻；
+            只有证据充分且通过风控时，才会提出交易建议。
           </p>
         </Card>
       )}
@@ -354,7 +352,7 @@ export default function ProposalsPage() {
 
       {resolved.length > 0 && filter === "all" && (
         <h2 className="mt-2 text-sm font-semibold text-ink-muted">
-          Recently resolved
+          最近处理
         </h2>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -366,7 +364,7 @@ export default function ProposalsPage() {
       {runs.length > 0 && (
         <>
           <h2 className="mt-2 text-sm font-semibold text-ink-muted">
-            Research history
+            研究历史
           </h2>
           <Card>
             <ol className="flex flex-col gap-3">
@@ -388,15 +386,15 @@ export default function ProposalsPage() {
                       />
                       <span className="font-medium">
                         {r.status === "running"
-                          ? "Researching…"
+                          ? "研究中…"
                           : r.status === "error"
-                            ? "Failed"
-                            : `${orders.length} order${orders.length === 1 ? "" : "s"} proposed`}
+                            ? "运行失败"
+                            : `提出 ${orders.length} 笔交易建议`}
                       </span>
                       <span className="text-xs text-ink-muted">
                         {dateTime(r.started_at)}
                         {orders.length > 0 &&
-                          ` · ${orders.map((o) => `${o.action === "sell" ? "sell" : "buy"} ${o.symbol}`).join(", ")}`}
+                          ` · ${orders.map((o) => `${o.action === "sell" ? "卖出" : "买入"} ${o.symbol}`).join("、")}`}
                       </span>
                     </div>
                     {plan?.rationale && (
@@ -404,7 +402,7 @@ export default function ProposalsPage() {
                     )}
                     {r.steer.length > 0 && (
                       <p className="pl-4 text-xs text-ink-muted">
-                        Your steering: {r.steer.join(" · ")}
+                        追加要求：{r.steer.join(" · ")}
                       </p>
                     )}
                     {r.error && (
@@ -446,7 +444,7 @@ function ProposalCard({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline bg-surface-2 px-5 py-4">
           <div className="flex items-center gap-2.5">
             <h3 className="text-lg font-bold tracking-tight">
-              {d.action === "rebalance" ? "Portfolio plan" : "Hold — no action"}
+              {d.action === "rebalance" ? "组合调整方案" : "继续持有，不操作"}
             </h3>
             <StatusBadge status={d.status} />
           </div>
@@ -457,7 +455,7 @@ function ProposalCard({
           {d.evidence.length > 0 && (
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-medium text-ink-muted">
-                Evidence — {d.evidence.length} item{d.evidence.length > 1 ? "s" : ""}
+                研究依据 · {d.evidence.length} 条
               </summary>
               <ul className="mt-2 flex flex-col gap-2">
                 {d.evidence.map((e, i) => (
@@ -481,7 +479,7 @@ function ProposalCard({
       <div className="border-b border-hairline bg-surface-2 px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold tracking-tight">
-            {d.action === "sell" ? "Sell" : "Buy"} {d.symbol}
+            {d.action === "sell" ? "卖出" : "买入"} {d.symbol}
           </h3>
           <StatusBadge status={d.status} />
         </div>
@@ -491,17 +489,17 @@ function ProposalCard({
           </p>
         )}
         <p className="mt-1 text-[11px] text-ink-muted">
-          {dateTime(d.createdAt)} · strategy v{d.strategyVersion}
+          {dateTime(d.createdAt)} · 策略版本 {d.strategyVersion}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 px-5 py-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Order type</span>
-          <span className="text-ink-2">Market · proposed by your analyst</span>
+          <span className="font-medium">订单类型</span>
+          <span className="text-ink-2">市价单 · 由研究助手建议</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Shares</span>
+          <span className="font-medium">股数</span>
           {isPending ? (
             <input
               type="number"
@@ -519,7 +517,7 @@ function ProposalCard({
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-series-1">
-            {d.order?.fillPrice ? "Fill price" : "Market price"}
+            {d.order?.fillPrice ? "成交价" : "参考市价"}
           </span>
           <span className="font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
             {price ? usd(price) : "—"}
@@ -528,7 +526,7 @@ function ProposalCard({
         <div className="border-t border-hairline pt-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold">
-              {d.order?.fillPrice ? "Cost" : "Estimated cost"}
+              {d.order?.fillPrice ? "成交金额" : "预计金额"}
             </span>
             <span className="text-sm font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
               {usd(est)}
@@ -536,15 +534,15 @@ function ProposalCard({
           </div>
           {isPending && qty !== proposedQty && (
             <p className="mt-1 text-right text-[11px] text-ink-muted">
-              edited from {proposedQty} shares — safeguards re-check at this size
+              已从 {proposedQty} 股调整为 {qty} 股，风控会按新数量重新检查
             </p>
           )}
         </div>
 
         {d.order && (
           <div className="rounded-lg bg-page px-3 py-2 text-xs text-ink-2">
-            Paper order {d.order.id.slice(0, 8)} · {d.order.status}
-            {d.order.status === "accepted" && " — fills at the next market open"}
+            模拟订单 {d.order.id.slice(0, 8)} · {orderStatus(d.order.status)}
+            {d.order.status === "accepted" && " · 将在下次美股开盘时撮合"}
           </div>
         )}
 
@@ -555,14 +553,14 @@ function ProposalCard({
               disabled={busy}
               className="btn-primary flex-1 px-4 py-3 text-sm"
             >
-              {busy ? "Submitting…" : "Approve order"}
+              {busy ? "正在提交…" : "确认模拟订单"}
             </button>
             <button
               onClick={() => setRejecting(true)}
               disabled={busy}
               className="btn-ghost px-4 py-3 text-sm"
             >
-              Reject
+              拒绝
             </button>
           </div>
         )}
@@ -578,7 +576,7 @@ function ProposalCard({
               autoFocus
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Why? (optional — the agent learns from this)"
+              placeholder="可选：说明原因，帮助助手改进后续研究"
               className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2 text-sm outline-none placeholder:text-ink-muted focus:border-accent"
             />
             <button
@@ -586,21 +584,21 @@ function ProposalCard({
               disabled={busy}
               className="rounded-full bg-critical px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              {busy ? "Rejecting…" : "Confirm"}
+              {busy ? "正在拒绝…" : "确认拒绝"}
             </button>
           </form>
         )}
 
         {d.status === "rejected" && d.feedback && (
           <p className="rounded-lg bg-critical/10 px-3 py-2 text-xs text-ink-2">
-            <span className="font-medium">Your reason:</span> {d.feedback}
+            <span className="font-medium">你的原因：</span> {d.feedback}
           </p>
         )}
 
         {d.evidence.length > 0 && (
           <details>
             <summary className="cursor-pointer text-xs font-medium text-ink-muted">
-              Evidence — {d.evidence.length} item{d.evidence.length > 1 ? "s" : ""}
+              研究依据 · {d.evidence.length} 条
             </summary>
             <ul className="mt-2 flex flex-col gap-2">
               {d.evidence.map((e, i) => (
@@ -617,7 +615,7 @@ function ProposalCard({
         {d.safeguards.length > 0 && (
           <details>
             <summary className="cursor-pointer text-xs font-medium text-ink-muted">
-              Safeguard checks — {passed}/{d.safeguards.length} passed
+              风控检查 · {passed}/{d.safeguards.length} 项通过
             </summary>
             <div className="mt-2">
               <SafeguardList checks={d.safeguards} />
@@ -627,4 +625,14 @@ function ProposalCard({
       </div>
     </Card>
   );
+}
+
+function orderStatus(status: string) {
+  return {
+    accepted: "已接收",
+    filled: "已成交",
+    canceled: "已取消",
+    rejected: "已拒绝",
+    pending: "处理中",
+  }[status] ?? status;
 }

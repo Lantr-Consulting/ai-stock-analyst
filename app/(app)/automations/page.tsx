@@ -18,27 +18,27 @@ import { dateTime } from "@/lib/format";
 import { useToast } from "@/components/toast";
 
 const CADENCES = [
-  { v: "manual", label: "Manual — run when I click" },
-  { v: "market_open", label: "Every market open (9:30am ET)" },
-  { v: "daily", label: "Daily at a set hour" },
-  { v: "weekly", label: "Weekly (Fridays)" },
+  { v: "manual", label: "手动运行" },
+  { v: "market_open", label: "每个美股交易日开盘（美东 9:30）" },
+  { v: "daily", label: "每天定时" },
+  { v: "weekly", label: "每周五" },
 ];
 
 const TEMPLATES = [
   {
-    title: "Portfolio research",
+    title: "组合研究",
     prompt:
-      "Run a full research cycle: review my portfolio and open orders, scan my watchlist plus market movers, and propose the trades that best move me toward my strategy's target allocation.",
+      "完成一轮组合研究：复盘我的持仓和未成交订单，查看自选股与市场异动，并仅在证据充分时提出符合目标配置的交易建议。",
   },
   {
-    title: "Daily market update",
+    title: "每日市场简报",
     prompt:
-      "Write me a concise daily market update: what moved in and around my portfolio and watchlist today and why, citing prices, indicators, and news. No trade proposals — report only.",
+      "写一份简洁的每日市场简报：说明持仓和自选股今天有哪些变化、为什么变化，并附上价格、技术指标和新闻依据。只做汇报，不提出交易建议。",
   },
   {
-    title: "Weekly performance review",
+    title: "每周表现复盘",
     prompt:
-      "Review my portfolio's performance this week: what helped, what hurt, how I'm tracking against my strategy, and one thing to watch next week. Report only.",
+      "复盘本周组合表现：哪些持仓带来收益、哪些拖累表现、当前与策略目标有何偏差，以及下周最值得关注的一件事。只做汇报。",
   },
 ];
 
@@ -74,9 +74,9 @@ export default function AutomationsPage() {
       setAutos((prev) => [a, ...(prev ?? [])]);
       setTitle("");
       setPrompt("");
-      toast("success", `Automation "${a.title}" created.`);
+      toast("success", `定时任务“${a.title}”已创建。`);
     } catch {
-      toast("error", "Couldn't create the automation — try again.");
+      toast("error", "暂时无法创建任务，请稍后再试。");
     }
     setBusy(false);
   }
@@ -84,23 +84,23 @@ export default function AutomationsPage() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Automations</h1>
+        <h1 className="text-xl font-semibold tracking-tight">定时任务</h1>
         <p className="mt-0.5 text-sm text-ink-muted">
           {signedOut ? (
             <>
               <Link href="/signin" className="font-medium text-series-1 hover:underline">
-                Sign in
+                登录
               </Link>{" "}
-              to set up automations.
+              后可设置定时任务。
             </>
           ) : (
-            "Give your analyst standing missions — research runs, market updates, reviews — on your schedule. Results arrive as conversations and proposals."
+            "把组合研究、市场简报和定期复盘交给研究助手按时完成；结果会同步到对话和交易建议中。"
           )}
         </p>
       </header>
 
       {!signedOut && (
-        <Card title="New automation">
+        <Card title="新建任务">
           <div className="mb-3 flex flex-wrap gap-1.5">
             {TEMPLATES.map((t) => (
               <button
@@ -119,14 +119,14 @@ export default function AutomationsPage() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title — e.g. Daily market update"
+              placeholder="任务名称，例如：每日市场简报"
               className="rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
             />
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
-              placeholder="The mission, in plain English — what should the analyst do on each run?"
+              placeholder="用自然语言说明每次运行时，希望研究助手完成什么"
               className="resize-none rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
             />
             <div className="flex flex-wrap items-center gap-3">
@@ -143,7 +143,7 @@ export default function AutomationsPage() {
               </select>
               {(cadence === "daily" || cadence === "weekly") && (
                 <label className="flex items-center gap-2 text-sm text-ink-2">
-                  at
+                  于
                   <input
                     type="number"
                     min={0}
@@ -160,7 +160,7 @@ export default function AutomationsPage() {
                 disabled={busy}
                 className="ml-auto btn-primary px-4 py-2 text-sm font-medium  disabled:opacity-50"
               >
-                Create automation
+                创建任务
               </button>
             </div>
           </form>
@@ -186,7 +186,7 @@ export default function AutomationsPage() {
               <p className="mt-1 text-sm text-ink-2">{a.prompt}</p>
               <p className="mt-1 text-xs text-ink-muted">
                 {CADENCES.find((c) => c.v === a.cadence)?.label ?? a.cadence}
-                {a.last_run_at ? ` · last ran ${dateTime(a.last_run_at)}` : " · never run"}
+                {a.last_run_at ? ` · 上次运行 ${dateTime(a.last_run_at)}` : " · 尚未运行"}
               </p>
             </div>
             <div className="flex shrink-0 gap-2">
@@ -194,14 +194,14 @@ export default function AutomationsPage() {
                 onClick={async () => {
                   try {
                     await runAutomation(a.id);
-                    toast("info", `"${a.title}" started — results arrive in chat and Proposals.`);
+                    toast("info", `“${a.title}”已开始，结果会出现在对话和研究助手中。`);
                   } catch (e) {
-                    toast("error", e instanceof Error ? e.message : "Couldn't start the run.");
+                    toast("error", e instanceof Error ? e.message : "暂时无法开始运行。 ");
                   }
                 }}
                 className="btn-primary px-3.5 py-2 text-sm font-medium "
               >
-                Run now
+                立即运行
               </button>
               <button
                 onClick={async () => {
@@ -210,21 +210,21 @@ export default function AutomationsPage() {
                   try {
                     await toggleAutomation(a.id, enabled);
                   } catch {
-                    toast("error", "Couldn't update — try again.");
+                    toast("error", "暂时无法更新，请稍后再试。");
                   }
                 }}
                 className="btn-ghost px-3.5 py-2 text-sm font-medium  dark:hover:bg-white/5"
               >
-                {a.enabled ? "Disable" : "Enable"}
+                {a.enabled ? "停用" : "启用"}
               </button>
               <button
                 onClick={async () => {
                   setAutos((prev) => (prev ?? []).filter((x) => x.id !== a.id));
                   try {
                     await deleteAutomation(a.id);
-                    toast("info", `"${a.title}" deleted.`);
+                    toast("info", `“${a.title}”已删除。`);
                   } catch {
-                    toast("error", "Couldn't delete — refresh and try again.");
+                    toast("error", "暂时无法删除，请刷新后重试。");
                   }
                 }}
                 className="rounded-lg border border-hairline px-3 py-2 text-sm text-ink-muted hover:text-critical"
@@ -238,9 +238,9 @@ export default function AutomationsPage() {
             <div className="mt-4 rounded-xl bg-page px-4 py-3">
               <div className="flex items-center gap-2 text-sm">
                 <span aria-hidden className="size-2 animate-pulse rounded-full bg-accent" />
-                <span className="font-medium">Running now…</span>
+                <span className="font-medium">正在运行…</span>
                 <span className="text-xs text-ink-muted">
-                  results appear here when it finishes
+                  完成后会在这里显示结果
                 </span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-baseline">
@@ -252,7 +252,7 @@ export default function AutomationsPage() {
           {latest && (
             <div className="mt-4 rounded-xl bg-page px-4 py-3">
               <div className="mb-1.5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                Latest result
+                最近一次结果
                 <span
                   aria-hidden
                   className={`size-1.5 rounded-full ${latest.status === "error" ? "bg-critical" : "bg-good"}`}
@@ -260,16 +260,15 @@ export default function AutomationsPage() {
                 <span className="normal-case">{dateTime(latest.finished_at ?? latest.started_at)}</span>
               </div>
               {latest.status === "error" ? (
-                <p className="text-sm text-critical">{latest.error ?? "Run failed."}</p>
+                <p className="text-sm text-critical">{latest.error ?? "本次运行失败。"}</p>
               ) : (
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
-                  {latest.report ?? "No report recorded."}
+                  {latest.report ?? "本次运行没有生成报告。"}
                 </p>
               )}
               {latest.decisions.filter((d) => d.symbol).length > 0 && (
                 <a href="/proposals" className="mt-2 inline-block text-xs font-medium text-series-1 hover:underline">
-                  {latest.decisions.filter((d) => d.symbol).length} trade
-                  {latest.decisions.filter((d) => d.symbol).length > 1 ? "s" : ""} proposed — review →
+                  已生成 {latest.decisions.filter((d) => d.symbol).length} 笔交易建议，前往确认 →
                 </a>
               )}
             </div>
@@ -278,17 +277,17 @@ export default function AutomationsPage() {
           {past.length > 0 && (
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-medium text-ink-muted">
-                Past runs — {past.length}
+                过往运行 · {past.length} 次
               </summary>
               <ul className="mt-2 flex flex-col gap-2">
                 {past.map((r) => (
                   <li key={r.id} className="rounded-lg bg-page px-3 py-2">
                     <div className="text-[11px] text-ink-muted">
                       {dateTime(r.finished_at ?? r.started_at)}
-                      {r.status === "error" ? " · failed" : ""}
+                      {r.status === "error" ? " · 失败" : ""}
                     </div>
                     <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-ink-2">
-                      {r.status === "error" ? (r.error ?? "Run failed.") : (r.report ?? "—")}
+                      {r.status === "error" ? (r.error ?? "本次运行失败。") : (r.report ?? "—")}
                     </p>
                   </li>
                 ))}
@@ -301,8 +300,7 @@ export default function AutomationsPage() {
 
       {autos !== null && autos.length === 0 && !signedOut && (
         <p className="text-sm text-ink-muted">
-          No automations yet — try a template above. "Portfolio research" on
-          every market open is the classic always-on setup.
+          还没有定时任务。可以先用上方模板创建一个“组合研究”，在每个美股交易日开盘时运行。
         </p>
       )}
     </div>

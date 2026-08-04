@@ -65,6 +65,12 @@ Discipline:
   beyond the watchlist, say why in the order's rationale. Avoid illiquid
   or sub-$3 names; a deterministic engine rejects them anyway.
 
+Language:
+- Write every user-facing value in natural Simplified Chinese, especially
+  "why" and "rationale". Keep stock symbols, JSON keys, and the action enum
+  ("buy" / "sell") unchanged. Translate and summarize English source material
+  instead of copying English headlines into the explanation.
+
 When done researching, respond with ONLY a JSON object, no prose:
 {{"targetAllocation": [{{"symbol": "XYZ" or "CASH", "pct": <number>}}, ...],
   "orders": [{{"action": "buy" | "sell", "symbol": "XYZ", "qty": <whole number>, "why": "<1 sentence>"}}, ...],
@@ -77,8 +83,8 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
         """Current paper account: cash, equity, and open positions."""
         try:
             return json.dumps(broker.account_snapshot(keys))
-        except Exception as e:
-            return json.dumps({"error": str(e)[:200]})
+        except Exception:
+            return json.dumps({"error": "行情查询暂时失败，请稍后重试"}, ensure_ascii=False)
 
     @tool
     def get_latest_prices(symbols: str) -> str:
@@ -87,16 +93,16 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
             return json.dumps(
                 broker.latest_prices([s.strip() for s in symbols.split(",")], keys)
             )
-        except Exception as e:
-            return json.dumps({"error": f"{e}"[:200] + " — check the ticker symbol and retry"})
+        except Exception:
+            return json.dumps({"error": "无法查询这个标的，请确认代码后重试"}, ensure_ascii=False)
 
     @tool
     def get_daily_bars(symbol: str, days: int = 30) -> str:
         """Recent daily OHLCV bars for one symbol (default 30 days)."""
         try:
             return json.dumps(broker.daily_bars(symbol, days, keys))
-        except Exception as e:
-            return json.dumps({"error": f"{e}"[:200]})
+        except Exception:
+            return json.dumps({"error": "价格历史暂时无法获取"}, ensure_ascii=False)
 
     @tool
     def get_recent_news(symbols: str, limit: int = 8) -> str:
@@ -105,8 +111,8 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
             return json.dumps(
                 broker.recent_news([s.strip() for s in symbols.split(",")], limit, keys)
             )
-        except Exception as e:
-            return json.dumps({"error": f"{e}"[:200]})
+        except Exception:
+            return json.dumps({"error": "新闻暂时无法获取"}, ensure_ascii=False)
 
     @tool
     def get_market_movers() -> str:
@@ -114,8 +120,8 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
         for discovering candidates beyond the watchlist."""
         try:
             return json.dumps(broker.market_movers(keys))
-        except Exception as e:
-            return json.dumps({"error": str(e)[:200]})
+        except Exception:
+            return json.dumps({"error": "市场异动数据暂时无法获取"}, ensure_ascii=False)
 
     @tool
     def get_indicators(symbol: str) -> str:
@@ -124,8 +130,8 @@ def _tools(keys: broker.Keys = None) -> list[Any]:
         30-day return."""
         try:
             return json.dumps(broker.indicators(symbol, keys))
-        except Exception as e:
-            return json.dumps({"error": f"{e}"[:200]})
+        except Exception:
+            return json.dumps({"error": "技术指标暂时无法获取"}, ensure_ascii=False)
 
     return [get_portfolio, get_latest_prices, get_daily_bars, get_recent_news, get_market_movers, get_indicators]
 
@@ -183,7 +189,7 @@ def run_research_cycle(
     for action_step, output in result.get("intermediate_steps", []):
         evidence.append(
             {
-                "source": f"Tool — {action_step.tool}({json.dumps(action_step.tool_input)})",
+                "source": f"数据工具 · {action_step.tool}({json.dumps(action_step.tool_input)})",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "summary": _summarize_tool_output(action_step.tool, output),
             }
@@ -195,7 +201,7 @@ def run_research_cycle(
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not match:
         return {"targetAllocation": [], "orders": [],
-                "rationale": f"Research cycle produced no parseable plan. Raw: {raw[:200]}",
+                "rationale": f"本轮研究没有生成可解析的方案。模型原始输出：{raw[:200]}",
                 "evidence": evidence}
     plan = json.loads(match.group(0))
     plan.setdefault("targetAllocation", [])

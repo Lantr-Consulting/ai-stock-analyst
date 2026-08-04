@@ -7,7 +7,9 @@ manages a **paper-trading portfolio** within deterministic safeguards.
 > **Simulated.** Everything in this app runs against a paper-trading account.
 > No real money is invested, and nothing here is financial advice.
 
-A Lantr sample project, built in the same order a student builds theirs.
+A past Lantr student project, kept online by Lantr as a hosted demonstration.
+
+**Live:** https://analyst.lantr.site
 
 ## Status: Milestone 4 — Hands
 

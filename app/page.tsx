@@ -1,29 +1,21 @@
 "use client";
 
-/* Marketing landing at "/" — FORGE design language (matching lantr.site),
-   bilingual EN/中文. The product lives behind it under /dashboard etc. */
+/* Marketing landing at "/" — FORGE design language (matching lantr.site).
+   The product lives behind it under /dashboard etc. */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import {
-  ColumnRules,
-  LangToggle,
-  persistLang,
-  readLang,
-  Reveal,
-  Words,
-  type Lang,
-} from "@/components/landing/kit";
+import { ColumnRules, Reveal, Words, type Lang } from "@/components/landing/kit";
 
 const COPY = {
   en: {
     nav: { features: "Features", how: "How it works", who: "Who it's for" },
-    hub: "All demos",
+    hub: "Student showcase",
     signIn: "Sign in",
     openApp: "Open the demo",
     openDash: "Open your dashboard",
-    badge: "A Lantr sample project · Simulated paper trading",
+    badge: "Past Lantr student project · Hosted demo · Paper trading",
     h1: "A personal AI analyst that manages your portfolio.",
     subLead: "Describe how you invest in plain English. ",
     subEm: "It does the analyst's work",
@@ -86,15 +78,15 @@ const COPY = {
         b: "Approved orders go to the paper account; rejections become lessons. The loop repeats, a little smarter each time.",
       },
     ],
-    hoodKicker: "Under the hood",
-    hoodTitle: "Built milestone by milestone.",
+    hoodKicker: "How the student built it",
+    hoodTitle: "From a class idea to a live product.",
     hoodBody:
-      "First ship, design pass, brain, hands, memory, autonomy — built in the exact order Lantr students build theirs, with every milestone a public tag on GitHub.",
+      "This project was completed by a past Lantr student. The student shipped a small first version, then added the agent, live market tools, risk checks, accounts, and automation one working milestone at a time. Lantr now hosts the finished work for visitors to explore.",
     hoodLink: "Read the source on GitHub",
-    whoKicker: "Who it's for",
-    whoTitle: "The finance & quant track sample.",
+    whoKicker: "The student's direction",
+    whoTitle: "A finance-and-AI project, taken all the way to launch.",
     whoBody:
-      "Lantr students build a project aimed at their intended major. This one shows what the finance-and-markets direction looks like when it ships.",
+      "The student chose a question at the intersection of markets, software, and human control—and turned it into working software rather than a presentation.",
     who: [
       {
         t: "Finance & Economics",
@@ -112,110 +104,111 @@ const COPY = {
     ctaTitle: "Try it with simulated money. Keep the lessons.",
     ctaBody: "Sign in once and you're signed in across every Lantr demo.",
     footerDisclaimer:
-      "Simulated paper trading only. No real money. Not financial advice. Built as a Lantr sample project.",
+      "A past Lantr student project, hosted by Lantr for demonstration. Simulated paper trading only. No real money. Not financial advice.",
     footerLinks: "More from Lantr",
   },
   zh: {
-    nav: { features: "功能", how: "运作方式", who: "适合谁" },
-    hub: "全部演示",
+    nav: { features: "主要功能", how: "使用流程", who: "作品方向" },
+    hub: "往届作品",
     signIn: "登录",
-    openApp: "进入演示",
-    openDash: "打开我的工作台",
-    badge: "Lantr 示范项目 · 模拟盘交易",
-    h1: "一位专属于你的 AI 股票分析师。",
-    subLead: "用一句话描述你的投资风格，",
-    subEm: "剩下的交给它",
+    openApp: "体验作品",
+    openDash: "打开投资工作台",
+    badge: "Lantr 往届学生作品 · 模拟交易，不涉及真实资金",
+    h1: "让 AI 帮你研究市场，买不买仍由你决定。",
+    subLead: "告诉它你平时怎么投资，",
+    subEm: "它会按你的偏好查看实时行情",
     subRest:
-      "——研究实时行情、在你的风控范围内提出交易建议，经你批准后在 10 万美元模拟账户中执行。",
-    ctaPrimary: "进入在线演示",
-    ctaSecondary: "免费创建账户",
+      "、整理交易建议。每一笔订单都会先经过风控规则检查，只有你确认后才会进入模拟账户。",
+    ctaPrimary: "开始体验",
+    ctaSecondary: "注册体验账户",
     trust: [
-      "仅模拟盘交易 — 不涉及真实资金",
-      "每笔订单都经过确定性风控引擎检查",
-      "未经你批准，绝不下单",
+      "全程使用模拟资金",
+      "每笔订单都先检查风险",
+      "没有你的确认不会下单",
     ],
-    frameCaption: "产品实况：深色 Robinhood 风格工作台，接入真实行情数据。",
-    featuresKicker: "它能做什么",
-    featuresTitle: "是分析师，不是自动补全。",
+    frameCaption: "学生完成的产品界面：行情研究、持仓管理和模拟交易都集中在同一个工作台。",
+    featuresKicker: "学生做了什么",
+    featuresTitle: "从了解投资习惯，到提出交易建议，整个流程都做进了产品里。",
     features: [
       {
-        t: "用你自己的话定策略",
-        b: "告诉它“稳健的科技股投资者，偏好分红，不碰梗股”，它会把这句话变成一份真正执行的投资档案；你在对话中改了主意，它随时更新。",
+        t: "先了解你怎么投资",
+        b: "用自己的话说明偏好，例如更看重稳健、关注哪些行业、能接受多大波动。产品会把这些信息整理成投资偏好和风控要求。",
       },
       {
-        t: "基于实时行情的研究",
-        b: "它扫描真实市场异动，阅读 SMA、RSI、波动率、回撤等指标和新闻，给出目标配置和至多五笔带仓位的订单建议——每一条理由都经得起追问。",
+        t: "看过行情，再给建议",
+        b: "产品会查看实时价格、涨跌、技术指标和新闻，再给出配置建议和不超过五笔的模拟订单，并说明为什么这样判断。",
       },
       {
-        t: "代码做决定，模型做解释",
-        b: "仓位上限、单笔限额、现金底线、仙股过滤——全部由确定性风控引擎执行，而不是靠大模型自觉。任何越界的提案都到不了你面前。",
+        t: "风险交给规则检查",
+        b: "仓位上限、单笔金额、最低现金比例和低价股限制都写成明确规则。只要不符合要求，建议就不会进入下一步。",
       },
       {
-        t: "最终决定权在你手里",
-        b: "每笔订单都是一张待批的交易单：批准、改仓位、或写明理由拒绝。你的每次判断都会成为分析师下一轮研究前必读的经验。",
+        t: "每笔交易都由你确认",
+        b: "你可以同意、调整数量，也可以写下原因拒绝。产品会记住这些选择，下一次研究时作为参考。",
       },
       {
-        t: "你不在时，它照常工作",
-        b: "定时执行的常设任务——早间扫描、每周组合回顾、行业深挖。报告自动生成，等你上线时已经在工作台里等你。",
+        t: "按时完成例行研究",
+        b: "可以设置早间扫描、每周持仓回顾或行业研究。任务会按计划运行，结果准备好后留在工作台里。",
       },
       {
-        t: "可以随便逛的市场页",
-        b: "实时 Discover 页：涨跌榜与迷你走势图、你的持仓与自选，任意美股的完整个股页——一键把它交给你的分析师研究。",
+        t: "行情、持仓和自选集中查看",
+        b: "涨跌榜、走势图、持仓和自选都在行情页里。打开一只股票后，也可以直接让 AI 接着研究。",
       },
     ],
-    howKicker: "运作方式",
-    howTitle: "四个步骤，一个闭环。",
+    howKicker: "实际怎么用",
+    howTitle: "从说明偏好到模拟下单，只需四步。",
     how: [
       {
-        t: "创建账户",
-        b: "你会得到一个全新的 10 万美元 Alpaca 模拟账户，和一位空白的分析师。",
+        t: "注册账户",
+        b: "系统会准备一个 10 万美元的模拟账户，供你放心体验。",
       },
       {
-        t: "和分析师“面谈”",
-        b: "在对话中介绍你自己。它起草你的投资档案与风控参数，经你确认后才会激活。",
+        t: "说清楚投资偏好",
+        b: "通过对话说明关注什么、回避什么，以及能接受的风险。确认无误后再启用。",
       },
       {
-        t: "它研究并提案",
-        b: "按需或按计划，它研究市场并提交已通过风控检查的交易提案。",
+        t: "查看研究和建议",
+        b: "可以随时发起研究，也可以让任务按计划运行。建议会先经过风控规则检查。",
       },
       {
-        t: "你批准，它学习",
-        b: "批准的订单进入模拟账户，拒绝的理由变成经验。循环往复，每一轮都更懂你。",
+        t: "确认后再模拟下单",
+        b: "同意的订单会进入模拟账户；拒绝时写下的原因，会成为下次研究的参考。",
       },
     ],
-    hoodKicker: "技术底层",
-    hoodTitle: "按里程碑逐步构建。",
+    hoodKicker: "作品是怎么完成的",
+    hoodTitle: "从第一版网页，一步步做到可以使用。",
     hoodBody:
-      "首次上线、设计打磨、大脑、双手、记忆、自主运行——与 Lantr 学员的构建路径完全一致，每个里程碑都是 GitHub 上公开的 tag。",
+      "这是一位 Lantr 往届学生完成的项目。学生先做出可以操作的第一版，再逐步加入行情查询、AI 研究、风控规则、用户账户和定时任务。课程结束后，Lantr 继续托管这件作品，供访客体验。",
     hoodLink: "在 GitHub 阅读源码",
-    whoKicker: "适合谁",
-    whoTitle: "金融与量化方向的示范作品。",
+    whoKicker: "学生为什么选择这个题目",
+    whoTitle: "把对金融市场的兴趣，做成一件能实际操作的作品。",
     whoBody:
-      "Lantr 学员会围绕自己的目标专业打造项目。这个项目展示了金融与市场方向做出来是什么样子。",
+      "学生从自己对金融市场的兴趣出发，没有只做一份分析报告，而是把研究、风控和模拟交易写成了一套可以实际操作的软件。",
     who: [
       {
         t: "金融与经济",
-        b: "组合构建、风险限额、市场微观结构——不是文书里的一句话，而是真正写成了代码。",
+        b: "在完整的模拟交易流程中理解投资组合、仓位和风险限制。",
       },
       {
         t: "计算机与人工智能",
-        b: "一个会调用工具的 LLM 智能体：记忆、反馈闭环、确定性护栏层——正经 AI 产品的架构。",
+        b: "把会查数据、会使用工具的 AI，和普通软件中的明确规则结合起来。",
       },
       {
         t: "数据科学与数学",
-        b: "指标、选股器、评估闭环，以及从行情 API 到交易决策的实时数据管线。",
+        b: "处理市场指标和实时行情，让数据真正参与产品判断。",
       },
     ],
-    ctaTitle: "用模拟资金试一试，把经验留下。",
-    ctaBody: "登录一次，即可通行所有 Lantr 演示项目。",
+    ctaTitle: "用模拟资金，亲手走一遍完整流程。",
+    ctaBody: "使用同一个体验账户，也可以继续查看另外两件往届学生作品。",
     footerDisclaimer:
-      "仅为模拟盘交易，不涉及真实资金，不构成投资建议。Lantr 示范项目。",
-    footerLinks: "更多 Lantr 项目",
+      "Lantr 往届学生作品，由 Lantr 继续托管。全程使用模拟资金，不涉及真实交易，也不构成投资建议。",
+    footerLinks: "更多学生作品",
   },
 } as const;
 
 /* A stylized still of the product — the dark workspace inside a window frame. */
-function ProductFrame() {
+function ProductFrame({ lang }: { lang: Lang }) {
+  const zh = lang === "zh";
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--lp-line-strong)] bg-[#0b0b0b] text-left shadow-[0_1px_2px_rgba(30,28,23,0.06),0_40px_80px_-40px_rgba(30,28,23,0.4)]">
       {/* window chrome */}
@@ -231,13 +224,13 @@ function ProductFrame() {
         {/* portfolio pane */}
         <div className="bg-[#0b0b0b] p-5 sm:p-6">
           <div className="lp-mono text-[10px] uppercase tracking-[0.14em] text-[#7d7d78]">
-            Portfolio · paper
+            {zh ? "投资组合 · 模拟账户" : "Portfolio · paper"}
           </div>
           <div className="mt-2 text-3xl font-semibold tracking-tight text-[#f5f5f3]">
             $103,204.55
           </div>
           <div className="mt-1 text-sm font-medium text-[#00c805]">
-            +$3,204.55 (+3.2%) all time
+            +$3,204.55 (+3.2%) {zh ? "累计" : "all time"}
           </div>
           <svg
             viewBox="0 0 300 80"
@@ -264,9 +257,9 @@ function ProductFrame() {
           </svg>
           <div className="mt-4 space-y-2.5">
             {[
-              ["NVDA", "12 shares", "+4.1%", true],
-              ["VOO", "7 shares", "+1.8%", true],
-              ["TSLA", "5 shares", "−2.3%", false],
+              ["NVDA", zh ? "12 股" : "12 shares", "+4.1%", true],
+              ["VOO", zh ? "7 股" : "7 shares", "+1.8%", true],
+              ["TSLA", zh ? "5 股" : "5 shares", "−2.3%", false],
             ].map(([sym, qty, chg, up]) => (
               <div
                 key={sym as string}
@@ -286,24 +279,25 @@ function ProductFrame() {
         {/* proposal pane */}
         <div className="bg-[#131313] p-5 sm:p-6">
           <div className="lp-mono text-[10px] uppercase tracking-[0.14em] text-[#7d7d78]">
-            New proposal · from your analyst
+            {zh ? "新的交易建议 · 来自 AI 分析助手" : "New proposal · from your analyst"}
           </div>
           <div className="mt-3 rounded-xl bg-[#1c1c1c] p-4">
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-semibold text-[#f5f5f3]">
-                Buy 8 × MRVL
+                {zh ? "买入 8 股 MRVL" : "Buy 8 × MRVL"}
               </span>
               <span className="lp-mono text-[12px] text-[#b8b8b4]">≈ $1,140</span>
             </div>
             <p className="mt-2 text-[12px] leading-relaxed text-[#b8b8b4]">
-              AI-datacenter momentum; fits your “cautious tech” tilt without
-              breaching the 15% position cap.
+              {zh
+                ? "AI 数据中心业务保持增长，符合你偏稳健的科技股方向；买入后，仓位仍低于 15% 的上限。"
+                : "AI-datacenter momentum; fits your “cautious tech” tilt without breaching the 15% position cap."}
             </p>
             <ul className="mt-3 space-y-1.5">
               {[
-                "Within position cap",
-                "Cash floor kept",
-                "Listed, liquid, above $3",
+                zh ? "没有超过仓位上限" : "Within position cap",
+                zh ? "保留了最低现金比例" : "Cash floor kept",
+                zh ? "已上市、流动性充足、股价高于 3 美元" : "Listed, liquid, above $3",
               ].map((c) => (
                 <li
                   key={c}
@@ -327,15 +321,15 @@ function ProductFrame() {
             </ul>
             <div className="mt-4 flex gap-2">
               <span className="inline-flex flex-1 items-center justify-center rounded-full bg-[#ccf72e] px-3 py-1.5 text-[12px] font-semibold text-black">
-                Approve
+                {zh ? "同意" : "Approve"}
               </span>
               <span className="inline-flex flex-1 items-center justify-center rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-medium text-[#b8b8b4]">
-                Reject
+                {zh ? "拒绝" : "Reject"}
               </span>
             </div>
           </div>
           <p className="lp-mono mt-3 text-[10px] leading-relaxed text-[#5c5c58]">
-            Simulated — paper trading only.
+            {zh ? "仅供模拟交易，不涉及真实资金。" : "Simulated — paper trading only."}
           </p>
         </div>
       </div>
@@ -344,20 +338,15 @@ function ProductFrame() {
 }
 
 export default function Landing() {
-  const [lang, setLang] = useState<Lang>("en");
+  const lang: Lang = "zh";
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    setLang(readLang());
+    document.documentElement.lang = "zh-CN";
     supabase.auth.getSession().then(({ data }) => {
       setSignedIn(Boolean(data.session));
     });
   }, []);
-
-  function switchLang(l: Lang) {
-    setLang(l);
-    persistLang(l);
-  }
 
   const c = COPY[lang];
 
@@ -393,7 +382,6 @@ export default function Landing() {
             </a>
           </nav>
           <div className="ml-auto flex items-center gap-2.5">
-            <LangToggle lang={lang} onChange={switchLang} />
             {signedIn ? (
               <Link
                 href="/dashboard"
@@ -421,45 +409,47 @@ export default function Landing() {
       {/* ── hero ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <ColumnRules />
-        <div className="relative mx-auto w-full max-w-6xl px-5 pb-16 pt-16 text-center sm:px-8 sm:pt-24">
-          <Reveal>
-            <span className="lp-mono inline-flex items-center gap-2 rounded-full border border-[var(--lp-line-strong)] bg-[var(--lp-surface)] px-4 py-2 text-[11px] font-medium text-[var(--lp-muted)]">
-              <span aria-hidden className="size-1.5 rounded-full bg-[var(--lp-accent)]" />
-              {c.badge}
-            </span>
-          </Reveal>
-          <h1 className="lp-display mx-auto mt-7 max-w-3xl text-balance text-[2.5rem] font-normal leading-[1.07] tracking-[-0.015em] text-[var(--lp-fg)] sm:text-[3.9rem]">
-            <Words text={c.h1} delay={120} />
-          </h1>
-          <Reveal delay={200}>
-            <p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-relaxed text-[var(--lp-muted)] sm:text-lg">
-              {c.subLead}
-              <em className="lp-display italic text-[var(--lp-ink)]">{c.subEm}</em>
-              {c.subRest}
-            </p>
-          </Reveal>
-          <Reveal delay={280}>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/dashboard" className="lp-btn h-12 px-6 text-[15px]">
-                {c.ctaPrimary} →
-              </Link>
-              <Link href="/signin" className="lp-btn-ghost h-12 px-6 text-[15px]">
-                {c.ctaSecondary}
-              </Link>
-            </div>
-          </Reveal>
-          <Reveal delay={360}>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[13px] text-[var(--lp-muted)]">
-              {c.trust.map((t) => (
-                <span key={t} className="flex items-center gap-2">
-                  <span aria-hidden className="h-1 w-1 rounded-full bg-[var(--lp-accent)]" />
-                  {t}
-                </span>
-              ))}
-            </div>
-          </Reveal>
-          <Reveal delay={440} className="mx-auto mt-12 max-w-4xl">
-            <ProductFrame />
+        <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-16 sm:px-8 sm:pt-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12 lg:pb-20">
+          <div>
+            <Reveal>
+              <span className="lp-mono inline-flex items-center gap-2 rounded-full border border-[var(--lp-line-strong)] bg-[var(--lp-surface)] px-4 py-2 text-[11px] font-medium text-[var(--lp-muted)]">
+                <span aria-hidden className="size-1.5 rounded-full bg-[var(--lp-accent)]" />
+                {c.badge}
+              </span>
+            </Reveal>
+            <h1 className="lp-display mt-7 max-w-3xl text-balance text-[2.6rem] font-normal leading-[1.04] tracking-[-0.02em] text-[var(--lp-fg)] sm:text-[4rem] lg:text-[3.8rem]">
+              <Words text={c.h1} delay={120} />
+            </h1>
+            <Reveal delay={200}>
+              <p className="mt-7 max-w-xl text-pretty text-base leading-relaxed text-[var(--lp-muted)] sm:text-lg">
+                {c.subLead}
+                <em className="lp-display italic text-[var(--lp-ink)]">{c.subEm}</em>
+                {c.subRest}
+              </p>
+            </Reveal>
+            <Reveal delay={280}>
+              <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row">
+                <Link href="/dashboard" className="lp-btn h-12 px-6 text-[15px]">
+                  {c.ctaPrimary} →
+                </Link>
+                <Link href="/signin" className="lp-btn-ghost h-12 px-6 text-[15px]">
+                  {c.ctaSecondary}
+                </Link>
+              </div>
+            </Reveal>
+            <Reveal delay={360}>
+              <div className="mt-8 grid gap-2 text-[13px] text-[var(--lp-muted)]">
+                {c.trust.map((t) => (
+                  <span key={t} className="flex items-center gap-2">
+                    <span aria-hidden className="h-1 w-1 rounded-full bg-[var(--lp-accent)]" />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </Reveal>
+          </div>
+          <Reveal delay={360} className="min-w-0 lg:-mr-14">
+            <ProductFrame lang={lang} />
             <p className="lp-mono mt-3 text-[11px] text-[var(--lp-faint)]">
               {c.frameCaption}
             </p>
@@ -654,7 +644,7 @@ export default function Landing() {
                 <ul className="mt-3 space-y-1.5 text-[13px] text-[var(--lp-muted)]">
                   <li>
                     <a href="https://lantr.site" className="hover:text-[var(--lp-fg)]">
-                      lantr.site — demo hub
+                      lantr.site — 学生作品展
                     </a>
                   </li>
                   <li>

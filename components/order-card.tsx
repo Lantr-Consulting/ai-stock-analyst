@@ -26,7 +26,7 @@ export function OrderCard({
     <div className="overflow-hidden rounded-2xl bg-surface-2">
       <div className="border-b border-hairline px-5 py-4">
         <h3 className="text-lg font-bold tracking-tight">
-          {d.action === "sell" ? "Sell" : "Buy"} {d.symbol}
+          {d.action === "sell" ? "卖出" : "买入"} {d.symbol}
         </h3>
         {d.rationale && (
           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-2">
@@ -37,11 +37,11 @@ export function OrderCard({
 
       <div className="flex flex-col gap-3 px-5 py-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Order type</span>
-          <span className="text-ink-2">Market · proposed by your analyst</span>
+          <span className="font-medium">订单类型</span>
+          <span className="text-ink-2">市价单 · 由研究助手建议</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Shares</span>
+          <span className="font-medium">股数</span>
           <input
             type="number"
             min={1}
@@ -52,21 +52,21 @@ export function OrderCard({
           />
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-series-1">Market price</span>
+          <span className="font-medium text-series-1">参考市价</span>
           <span className="font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
             {price ? usd(price) : "—"}
           </span>
         </div>
         <div className="border-t border-hairline pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold">Estimated cost</span>
+            <span className="text-sm font-bold">预计金额</span>
             <span className="text-sm font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
               {usd(est)}
             </span>
           </div>
           {qty !== proposedQty && (
             <p className="mt-1 text-right text-[11px] text-ink-muted">
-              edited from {proposedQty} shares — safeguards re-check at this size
+              已从 {proposedQty} 股调整为 {qty} 股，风控会按新数量重新检查
             </p>
           )}
         </div>
@@ -76,14 +76,14 @@ export function OrderCard({
             disabled={busy}
             className="btn-primary flex-1 px-4 py-3 text-sm"
           >
-            {busy ? "Submitting…" : `Approve order`}
+            {busy ? "正在提交…" : "确认模拟订单"}
           </button>
           <button
             onClick={onReject}
             disabled={busy}
             className="btn-ghost px-4 py-3 text-sm"
           >
-            Reject
+            拒绝
           </button>
         </div>
       </div>

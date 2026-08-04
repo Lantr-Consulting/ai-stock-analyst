@@ -6,9 +6,7 @@ export function SimulatedBanner() {
     <div className="flex items-center gap-2 border-b border-hairline bg-page px-5 py-1.5 text-[11px] text-ink-muted">
       <span aria-hidden className="inline-block size-2 rounded-full bg-warning" />
       <span>
-        <strong className="font-semibold text-ink">Simulated</strong> — this is a
-        paper-trading account. No real money is invested, and nothing here is
-        financial advice.
+        <strong className="font-semibold text-ink">模拟交易</strong> — 当前账户只使用模拟资金，不涉及真实投资，也不构成投资建议。
       </span>
     </div>
   );
@@ -76,11 +74,11 @@ export function StatTile({
 }
 
 const STATUS_STYLES: Record<DecisionStatus, { label: string; cls: string }> = {
-  proposed: { label: "Awaiting approval", cls: "bg-accent/15 text-accent" },
-  approved: { label: "Approved", cls: "bg-good/10 text-delta-up dark:text-good" },
-  filled: { label: "Filled", cls: "bg-good/10 text-delta-up dark:text-good" },
-  rejected: { label: "Rejected", cls: "bg-white/10 text-ink-2" },
-  blocked: { label: "Blocked by safeguard", cls: "bg-critical/10 text-critical" },
+  proposed: { label: "等待确认", cls: "bg-accent/15 text-accent" },
+  approved: { label: "已同意", cls: "bg-good/10 text-delta-up dark:text-good" },
+  filled: { label: "已成交", cls: "bg-good/10 text-delta-up dark:text-good" },
+  rejected: { label: "已拒绝", cls: "bg-white/10 text-ink-2" },
+  blocked: { label: "未通过风控", cls: "bg-critical/10 text-critical" },
 };
 
 export function StatusBadge({ status }: { status: DecisionStatus }) {
@@ -112,7 +110,7 @@ export function SafeguardList({ checks }: { checks: SafeguardCheck[] }) {
             <span className="font-medium">{c.name}</span>
             <span className="text-ink-2"> — {c.detail}</span>
             <span className="sr-only">
-              {c.status === "pass" ? " (passed)" : " (failed)"}
+              {c.status === "pass" ? "（通过）" : "（未通过）"}
             </span>
           </span>
         </li>

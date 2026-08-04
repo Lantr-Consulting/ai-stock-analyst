@@ -1,5 +1,5 @@
 export function usd(n: number, opts?: { cents?: boolean }): string {
-  return n.toLocaleString("en-US", {
+  return n.toLocaleString("zh-CN", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: opts?.cents === false ? 0 : 2,
@@ -12,14 +12,14 @@ export function pct(n: number, digits = 1): string {
 }
 
 export function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("zh-CN", {
     month: "short",
     day: "numeric",
   });
 }
 
 export function dateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
+  return new Date(iso).toLocaleString("zh-CN", {
     month: "short",
     day: "numeric",
     hour: "numeric",

@@ -23,14 +23,14 @@ import type { ChatMessage } from "@/lib/types";
 import { useToast } from "@/components/toast";
 
 const SUGGESTED = [
-  "What are you watching right now?",
-  "Why are you holding cash?",
-  "How did my preferences affect the last trade?",
-  "What have you done this week?",
+  "你现在重点关注哪些标的？",
+  "为什么组合里保留了这些现金？",
+  "我的投资偏好如何影响了上一条建议？",
+  "这周你做了哪些研究？",
 ];
 
 const OFFLINE_REPLY =
-  "I can't reach my backend right now, so I can't answer from my decision records. Start the backend (backend/ on port 8000) or check NEXT_PUBLIC_API_URL, then ask me again.";
+  "暂时无法连接研究服务，因此不能根据你的决策记录作答。请稍后重新发送。";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -63,8 +63,8 @@ export default function ChatPage() {
               toast(
                 done?.status === "error" ? "error" : "success",
                 done?.status === "error"
-                  ? `Research failed: ${done.error ?? "unknown error"}`
-                  : "Research complete — findings and order tickets are in."
+                  ? `研究失败：${done.error ?? "未知错误"}`
+                  : "研究已完成，结论和模拟订单建议已经生成。"
               );
               if (threadId)
                 getChatHistory(threadId).then(setMessages).catch(() => {});
@@ -103,8 +103,8 @@ export default function ChatPage() {
     toast(
       "info",
       action === "approve"
-        ? `Approving ${d.symbol} — submitting to your paper account…`
-        : `Rejected ${d.symbol}.`
+        ? `正在确认 ${d.symbol}，并向模拟账户提交…`
+        : `已拒绝 ${d.symbol}。`
     );
     try {
       const updated =
@@ -115,11 +115,11 @@ export default function ChatPage() {
         toast(
           updated.status === "blocked" ? "error" : "success",
           updated.status === "blocked"
-            ? `${d.symbol} blocked — conditions changed; see Proposals for the checks.`
-            : `${d.symbol} order ${updated.order?.status ?? "accepted"} by Alpaca.`
+            ? `${d.symbol} 已被风控拦截；市场条件发生变化，请到研究助手查看检查结果。`
+            : `${d.symbol} 模拟订单已由 Alpaca ${updated.order?.status === "filled" ? "成交" : "接收"}。`
         );
     } catch {
-      toast("error", `Couldn't ${action} ${d.symbol} — see the Proposals page.`);
+      toast("error", `${action === "approve" ? "确认" : "拒绝"} ${d.symbol} 失败，请到研究助手页面重试。`);
     }
   }
 
@@ -177,7 +177,7 @@ export default function ChatPage() {
     try {
       const res = await askAnalyst(thread, threadId ?? undefined);
       reply = res.text;
-      if (res.strategyUpdated) toast("success", "Strategy updated from this conversation.");
+      if (res.strategyUpdated) toast("success", "已根据本次对话更新研究策略。 ");
       if (!threadId) {
         setThreadId(res.threadId);
         getThreads().then(setThreads).catch(() => {});
@@ -187,10 +187,10 @@ export default function ChatPage() {
     } catch (e) {
       if (isSignedOut(e)) {
         reply =
-          "You're not signed in — sign in (link in the sidebar) and I'll answer from your own account records.";
+          "你还没有登录。请先通过侧栏登录，我才能根据你的账户记录作答。";
       } else {
         // The reply may still be completing server-side — keep listening.
-        toast("info", "Taking longer than usual — still listening for the reply…");
+        toast("info", "本次回复耗时较长，仍在等待研究结果…");
         const since = userMsg.at;
         for (let i = 0; i < 15; i++) {
           await new Promise((r) => setTimeout(r, 4000));
@@ -204,7 +204,7 @@ export default function ChatPage() {
             }
           } catch {}
         }
-        toast("error", "No reply came through — please send that again.");
+        toast("error", "暂时没有收到回复，请重新发送一次。 ");
         setThinking(false);
         return;
       }
@@ -228,10 +228,10 @@ export default function ChatPage() {
           onClick={startNewChat}
           className="mb-3 w-full btn-ghost px-3 py-2 text-sm font-medium  dark:hover:bg-white/5"
         >
-          + New chat
+          + 新对话
         </button>
         <div className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-          Conversations
+          对话记录
         </div>
         <nav className="flex flex-col gap-0.5">
           {threads.map((t) => (
@@ -248,11 +248,11 @@ export default function ChatPage() {
             </button>
           ))}
           {threads.length === 0 && (
-            <p className="px-3 text-xs text-ink-muted">No conversations yet.</p>
+            <p className="px-3 text-xs text-ink-muted">还没有对话。</p>
           )}
         </nav>
         <div className="mb-1 mt-5 px-1 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-          Trades & research
+          交易与研究
         </div>
         <div className="flex flex-col gap-0.5">
           {recent.slice(0, 10).map((d) => (
@@ -276,13 +276,13 @@ export default function ChatPage() {
                 />
                 <span className="truncate text-ink-2">
                   {d.symbol
-                    ? `${d.action === "sell" ? "Sell" : "Buy"} ${d.qty} ${d.symbol}`
+                    ? `${d.action === "sell" ? "卖出" : "买入"} ${d.qty} 股 ${d.symbol}`
                     : d.action === "rebalance"
-                      ? "Portfolio plan"
-                      : "Hold"}
+                      ? "组合调整方案"
+                      : "继续持有"}
                 </span>
                 <span className="ml-auto shrink-0 text-[10px] text-ink-muted">
-                  {d.status}
+                  {decisionStatus(d.status)}
                 </span>
               </span>
             </a>
@@ -292,7 +292,7 @@ export default function ChatPage() {
               href="/proposals"
               className="px-3 pt-1 text-[11px] font-medium text-series-1 hover:underline"
             >
-              Full history & evidence →
+              查看完整记录与依据 →
             </a>
           )}
         </div>
@@ -302,18 +302,17 @@ export default function ChatPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
-            Ask the analyst
+            研究对话
           </h1>
           <p className="mt-0.5 text-sm text-ink-muted">
-            Interrogate any decision. The agent answers from its recorded
-            evidence and safeguard results — never from a made-up explanation.
+            可以追问任何一条决策。助手只根据已记录的研究依据和风控结果回答，不编造解释。
           </p>
         </div>
         <button
           onClick={startNewChat}
           className="btn-ghost px-3.5 py-2 text-sm font-medium  lg:hidden dark:hover:bg-white/5"
         >
-          + New chat
+          + 新对话
         </button>
       </header>
 
@@ -338,8 +337,7 @@ export default function ChatPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
         {messages.length === 0 && !thinking && (
           <div className="rounded-xl border border-dashed border-hairline px-5 py-8 text-center text-sm text-ink-muted">
-            Ask about the live paper account — positions, cash, any recorded
-            decision, or what the agent is watching. Try a suggestion below.
+            可以询问模拟账户的持仓、现金、历史决策或当前关注方向，也可以从下方问题开始。
           </div>
         )}
         {messages.map((m) => (
@@ -357,7 +355,7 @@ export default function ChatPage() {
               {m.role === "agent" ? <ChatMarkdown text={m.text} /> : m.text}
             </div>
             <div className="mt-1 px-1 text-[11px] text-ink-muted">
-              {m.role === "agent" ? "Analyst · " : ""}
+              {m.role === "agent" ? "研究助手 · " : ""}
               {dateTime(m.at)}
             </div>
           </div>
@@ -367,17 +365,17 @@ export default function ChatPage() {
             <span className="size-1.5 animate-pulse rounded-full bg-ink-muted" />
             <span className="size-1.5 animate-pulse rounded-full bg-ink-muted [animation-delay:150ms]" />
             <span className="size-1.5 animate-pulse rounded-full bg-ink-muted [animation-delay:300ms]" />
-            <span className="ml-1">Reading the records…</span>
+            <span className="ml-1">正在查阅记录…</span>
           </div>
         )}
       </div>
 
       {(() => {
         const LABELS: Record<string, string> = {
-          maxOrderPct: "Max single order",
-          maxPositionPct: "Max position size",
-          minCashPct: "Minimum cash",
-          maxTradesPerDay: "Max trades per day",
+          maxOrderPct: "单笔订单上限",
+          maxPositionPct: "单一标的仓位上限",
+          minCashPct: "最低现金比例",
+          maxTradesPerDay: "每日交易上限",
         };
         const rec = recent.find(
           (d) => !d.symbol && d.feedback?.startsWith('{"suggest"')
@@ -394,10 +392,10 @@ export default function ChatPage() {
         return (
           <div className="shrink-0 rounded-2xl border border-accent/40 bg-surface px-5 py-4">
             <div className="text-sm font-bold">
-              Your analyst suggests loosening a safeguard
+              研究助手建议调整一项风控限制
             </div>
             <p className="mt-1 text-xs leading-relaxed text-ink-2">
-              Some researched trades didn&apos;t fit your current limits:{" "}
+              部分研究结果不符合你当前设置的限制：{" "}
               {parsed.why}
             </p>
             <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -407,7 +405,7 @@ export default function ChatPage() {
                   className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent"
                 >
                   {LABELS[k] ?? k}: {v}
-                  {k === "maxTradesPerDay" ? "/day" : "%"}
+                  {k === "maxTradesPerDay" ? " 笔/日" : "%"}
                 </li>
               ))}
             </ul>
@@ -419,21 +417,21 @@ export default function ChatPage() {
                     setDismissedSuggestion(rec.id);
                     toast(
                       "success",
-                      "Safeguards updated — run research again and the analyst will re-propose at the new limits."
+                      "风控设置已更新。再次运行研究后，助手会按新限制重新判断。"
                     );
                   } catch {
-                    toast("error", "Couldn't update safeguards — try again.");
+                    toast("error", "暂时无法更新风控设置，请稍后再试。 ");
                   }
                 }}
                 className="btn-primary px-4 py-2 text-sm"
               >
-                Apply changes
+                应用调整
               </button>
               <button
                 onClick={() => setDismissedSuggestion(rec.id)}
                 className="btn-ghost px-4 py-2 text-sm"
               >
-                Keep my limits
+                保持原设置
               </button>
             </div>
           </div>
@@ -444,12 +442,12 @@ export default function ChatPage() {
         <div className="shrink-0 rounded-2xl bg-surface px-5 py-3.5">
           <div className="flex items-center gap-2 text-sm">
             <span aria-hidden className="size-2 animate-pulse rounded-full bg-accent" />
-            <span className="font-medium">Research in progress</span>
+            <span className="font-medium">正在研究</span>
             <span
               className="ml-auto text-xs text-ink-muted"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
-              {elapsed}s
+              {elapsed} 秒
             </span>
           </div>
           <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-baseline">
@@ -459,8 +457,7 @@ export default function ChatPage() {
             />
           </div>
           <p className="mt-2 text-xs text-ink-muted">
-            Scanning live prices, news, movers, and indicators — usually about a
-            minute. Findings and order tickets post here the moment it finishes.
+            正在读取实时价格、新闻、异动和技术指标，通常需要约一分钟。完成后会立即显示结论和模拟订单建议。
           </p>
         </div>
       )}
@@ -468,9 +465,9 @@ export default function ChatPage() {
       {pending.length > 0 && (
         <div className="shrink-0 border-t border-hairline pt-3">
           <div className="mb-2 flex items-center justify-between text-xs font-medium text-ink-muted">
-            <span>Trades awaiting your approval</span>
+            <span>待你确认的模拟交易</span>
             <a href="/proposals" className="font-medium text-series-1 hover:underline">
-              Full details & history →
+              查看详情与历史 →
             </a>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -510,7 +507,7 @@ export default function ChatPage() {
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Ask about any decision, position, or signal…"
+            placeholder="询问任何决策、持仓或市场信号…"
             className="flex-1 rounded-lg border border-hairline bg-surface px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
           />
           <button
@@ -518,15 +515,24 @@ export default function ChatPage() {
             disabled={thinking}
             className="btn-primary px-4 py-2 text-sm font-medium  disabled:opacity-50"
           >
-            Send
+            发送
           </button>
         </form>
         <p className="mt-2 text-xs text-ink-muted">
-          Answers are grounded in the live paper account and the agent&apos;s
-          recorded decisions. Simulated — not financial advice.
+          回答基于模拟账户与已记录的研究决策；仅作项目演示，不构成投资建议。
         </p>
       </div>
       </div>
     </div>
   );
+}
+
+function decisionStatus(status: Decision["status"]) {
+  return {
+    proposed: "待确认",
+    approved: "已确认",
+    rejected: "已拒绝",
+    blocked: "已拦截",
+    filled: "已成交",
+  }[status];
 }

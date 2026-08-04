@@ -68,20 +68,20 @@ export default function Dashboard() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Portfolio</h1>
+          <h1 className="text-xl font-semibold tracking-tight">投资组合</h1>
           <p className="mt-0.5 text-sm text-ink-muted">
             {status === "signedOut" ? (
               <>
-                Sample data —{" "}
+                当前展示演示数据。{" "}
                 <Link href="/signin" className="font-medium text-series-1 hover:underline">
-                  sign in
+                  登录
                 </Link>{" "}
-                to see your own agent
+                后可查看你的研究助手
               </>
             ) : status === "offline" ? (
-              "Sample data — backend unreachable"
+              "暂时无法连接服务，当前展示演示数据"
             ) : (
-              `Live paper account${live?.sharedDemoAccount ? " (shared demo)" : ""} · as of ${dateTime(snapshot.asOf)}`
+              `模拟账户${live?.sharedDemoAccount ? "（公开演示账户）" : ""} · 更新于 ${dateTime(snapshot.asOf)}`
             )}
           </p>
         </div>
@@ -90,8 +90,7 @@ export default function Dashboard() {
             href="/proposals"
             className="btn-primary px-3.5 py-2 text-sm font-medium "
           >
-            {pending.length} trade{pending.length > 1 ? "s" : ""} awaiting
-            approval
+            {pending.length} 笔交易待确认
           </Link>
         )}
       </header>
@@ -99,7 +98,7 @@ export default function Dashboard() {
       <Card>
         <div className="mb-4">
           <div className="text-xs text-ink-muted">
-            Total portfolio value (simulated)
+            组合总资产（模拟）
           </div>
           <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
             <span
@@ -114,7 +113,7 @@ export default function Dashboard() {
               }`}
             >
               {totalReturnPct >= 0 ? "↑" : "↓"}{" "}
-              {Math.abs(totalReturnPct).toFixed(1)}% since start
+              启用以来 {Math.abs(totalReturnPct).toFixed(1)}%
             </span>
           </div>
         </div>
@@ -122,30 +121,29 @@ export default function Dashboard() {
           <ValueChart points={history} />
         ) : (
           <p className="rounded-lg border border-dashed border-hairline px-4 py-8 text-center text-sm text-ink-muted">
-            The value chart appears once the account has a couple of days of
-            history. Fresh paper account — check back tomorrow.
+            账户积累至少两天记录后，这里会显示资产曲线。新的模拟账户明天再来看即可。
           </p>
         )}
       </Card>
 
       <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
-        <StatTile label="Cash" value={usd(snapshot.cash)} />
+        <StatTile label="现金" value={usd(snapshot.cash)} />
         <StatTile
-          label="Unrealized gain"
+          label="未实现盈亏"
           value={usd(gain)}
-          delta={cost > 0 ? `${gainPct >= 0 ? "+" : ""}${gainPct.toFixed(1)}% on invested` : undefined}
+          delta={cost > 0 ? `已投入资金 ${gainPct >= 0 ? "+" : ""}${gainPct.toFixed(1)}%` : undefined}
           deltaGood={gain >= 0}
         />
-        <StatTile label="Positions" value={String(snapshot.positions.length)} />
+        <StatTile label="持仓数" value={String(snapshot.positions.length)} />
       </div>
 
       {snapshot.positions.length > 0 && (
-        <Card title="Positions" className="!p-0 overflow-hidden">
+        <Card title="持仓明细" className="!p-0 overflow-hidden">
           <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 border-b border-hairline bg-surface-2 px-5 py-2 text-[11px] font-bold uppercase tracking-wide text-ink-muted max-sm:grid-cols-[1fr_auto_auto]">
-            <span>Asset</span>
-            <span className="text-right">Value</span>
-            <span className="text-right">Total P/L</span>
-            <span className="text-right max-sm:hidden">Today</span>
+            <span>标的</span>
+            <span className="text-right">市值</span>
+            <span className="text-right">累计盈亏</span>
+            <span className="text-right max-sm:hidden">今日</span>
           </div>
           {snapshot.positions
             .slice()
@@ -193,31 +191,30 @@ export default function Dashboard() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="Allocation">
+        <Card title="资产配置">
           {snapshot.positions.length > 0 ? (
             <Allocation snapshot={snapshot} />
           ) : (
             <p className="text-sm text-ink-2">
-              All cash so far — the agent hasn&apos;t bought anything yet.
-              Approved trades appear here after they fill.
+              当前全部为现金，研究助手还没有执行买入。你确认的模拟交易成交后会显示在这里。
             </p>
           )}
         </Card>
 
         <Card
-          title="Recent decisions"
+          title="最近决策"
           action={
             <Link
               href="/activity"
               className="text-xs font-medium text-series-1 hover:underline"
             >
-              View all activity
+              查看全部记录
             </Link>
           }
         >
           {recent.length === 0 ? (
             <p className="text-sm text-ink-2">
-              No decisions yet — run a research cycle from the Proposals page.
+              暂无决策。前往“研究助手”发起一次研究即可开始。
             </p>
           ) : (
             <ul className="flex flex-col gap-3">
@@ -226,8 +223,8 @@ export default function Dashboard() {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">
                       {d.action === "hold" || !d.symbol
-                        ? "Hold — no action"
-                        : `${d.action === "buy" ? "Buy" : "Sell"} ${d.qty} ${d.symbol}`}
+                        ? "继续持有，不操作"
+                        : `${d.action === "buy" ? "买入" : "卖出"} ${d.qty} 股 ${d.symbol}`}
                       {d.estValue ? (
                         <span className="text-ink-muted"> · ~{usd(d.estValue)}</span>
                       ) : null}
@@ -245,7 +242,7 @@ export default function Dashboard() {
       </div>
 
       {offline && (
-        <Card title={`Weekly summary — ${weeklySummary.period}`}>
+        <Card title={`本周小结 · ${weeklySummary.period}`}>
           <p className="text-sm leading-relaxed text-ink-2">
             {weeklySummary.text}
           </p>

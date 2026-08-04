@@ -46,28 +46,28 @@ app.add_middleware(
 )
 
 DEFAULT_PROFILE = {
-    "goals": "Grow a long-term portfolio while learning how markets work",
+    "goals": "在理解市场的同时稳步积累长期资产",
     "riskTolerance": "moderate",
-    "timeHorizon": "3-5 years",
-    "preferredSectors": ["Technology", "AI infrastructure", "Broad-market ETFs"],
-    "avoid": ["Penny stocks", "Options, margin, and crypto (out of scope)"],
-    "marketViews": ["AI infrastructure demand keeps growing"],
-    "tradingFrequency": "Up to 2 new trades per week",
+    "timeHorizon": "3 至 5 年",
+    "preferredSectors": ["科技", "AI 基础设施", "宽基指数 ETF"],
+    "avoid": ["低价股", "期权、融资融券和加密资产（不在项目范围内）"],
+    "marketViews": ["AI 基础设施需求仍会增长"],
+    "tradingFrequency": "每周最多新增 2 笔交易",
 }
 
 DEFAULT_STRATEGY = {
-    "summary": "Hold a core broad-market position, tilt toward large-cap technology and AI infrastructure, add on evidence-backed opportunities, and keep a cash buffer.",
+    "summary": "以宽基指数作为核心仓位，适度配置大型科技与 AI 基础设施公司；只在证据充分时加仓，并保留现金缓冲。",
     "watching": [
-        "AI infrastructure earnings and guidance (NVDA, MSFT, AVGO)",
-        "Broad-market trend vs. the VOO benchmark",
-        "News that changes the thesis for any held position",
+        "AI 基础设施公司的财报和业绩指引（NVDA、MSFT、AVGO）",
+        "大盘走势与 VOO 基准的差异",
+        "可能改变现有持仓逻辑的新闻",
     ],
     "rules": [
-        "Core: keep 30-50% in VOO as the portfolio anchor",
-        "Tilt: up to 15% per single technology position",
-        "Buy only with at least two independent pieces of supporting evidence",
-        "Hold at least 10% cash at all times",
-        "Propose, don't execute - every order needs approval",
+        "核心仓位：将 30% 至 50% 配置在 VOO，作为组合锚点",
+        "方向倾斜：单一科技股仓位不超过 15%",
+        "至少有两项相互独立的依据时才提出买入建议",
+        "始终保留至少 10% 的现金",
+        "只提出建议，不自动执行；每笔订单都要用户确认",
     ],
     "universe": ["AAPL", "MSFT", "NVDA", "AMZN", "AVGO", "VOO", "QQQ"],
 }
@@ -140,12 +140,12 @@ def update_settings(
     if req.universe is not None:
         symbols = [s.strip().upper() for s in req.universe if s.strip()][:20]
         if not symbols:
-            raise HTTPException(status_code=400, detail="universe cannot be empty")
+            raise HTTPException(status_code=400, detail="研究范围不能为空")
         fields["strategy"] = {**row["strategy"], "universe": symbols}
     if req.paused is not None:
         fields["paused"] = req.paused
     if not fields:
-        raise HTTPException(status_code=400, detail="nothing to update")
+        raise HTTPException(status_code=400, detail="没有需要更新的内容")
     updated = db.update_agent(user["id"], fields)
     return {
         "ok": True,
@@ -161,7 +161,7 @@ def activate(user: dict = Depends(current_user)) -> dict[str, Any]:
     if not row["strategy"].get("universe") or row["strategy_version"] < 1:
         raise HTTPException(
             status_code=409,
-            detail="describe how you invest first — the agent needs an interpreted strategy and universe before it can run",
+            detail="请先描述你的投资方式，并确认研究策略和研究范围",
         )
     db.update_agent(user["id"], {"activated": True})
     return {"ok": True, "activated": True}
@@ -181,7 +181,7 @@ def set_alpaca_keys(
     if not broker.keys_valid(keys):
         raise HTTPException(
             status_code=400,
-            detail="Alpaca rejected those keys — check they're PAPER keys and copied fully",
+            detail="Alpaca 无法验证这些密钥，请确认使用的是完整的模拟交易密钥",
         )
     db.update_agent(user["id"], {"alpaca_api_key": keys[0], "alpaca_secret_key": keys[1]})
     return {"ok": True, "hasAlpacaKeys": True}
@@ -234,13 +234,13 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
     try:
         lessons = []
         for st in db.recent_steers(user["id"]):
-            lessons.append(f'STEERING from the user: "{st}"')
+            lessons.append(f'用户补充要求：“{st}”')
         for r in db.list_decisions(user["id"], limit=30):
-            if r.get("symbol") and r["status"] == "rejected" and r.get("feedback") != "Superseded by a newer research cycle.":
-                why = f' — their reason: "{r["feedback"]}"' if r.get("feedback") else ""
-                lessons.append(f'REJECTED {r["action"]} {r["qty"]} {r["symbol"]}{why}')
+            if r.get("symbol") and r["status"] == "rejected" and r.get("feedback") != "已由更新一轮的研究结果替代。":
+                why = f'；原因：“{r["feedback"]}”' if r.get("feedback") else ""
+                lessons.append(f'用户拒绝了 {r["action"]} {r["qty"]} 股 {r["symbol"]}{why}')
             elif r.get("symbol") and r["status"] in ("approved", "filled"):
-                lessons.append(f'approved {r["action"]} {r["qty"]} {r["symbol"]}')
+                lessons.append(f'用户确认了 {r["action"]} {r["qty"]} 股 {r["symbol"]}')
         pre = broker.account_snapshot(keys)
         trades_used = broker.orders_submitted_today(keys)
         trades_left = max(0, int(safeguards["maxTradesPerDay"]) - trades_used)
@@ -248,16 +248,16 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
         open_syms = sorted({o["symbol"] for o in pre.get("openOrders", [])})
         held_txt = ", ".join(
             f"{p['symbol']} ${p['shares']*p['price']:,.0f}" for p in pre["positions"]
-        ) or "none"
+        ) or "无"
         constraints = (
-            f"equity ${pre['equity']:,.0f}; cash ${pre['cash']:,.0f}; "
-            f"max single order ${max_order:,.0f} ({safeguards['maxOrderPct']}% of equity); "
-            f"keep cash above {safeguards['minCashPct']}% of equity; "
-            f"single position cap {safeguards['maxPositionPct']}% "
-            f"(core ETFs {safeguards.get('maxCorePositionPct', 50)}%); "
-            f"trades remaining today: {trades_left} — propose AT MOST {trades_left} orders; "
-            f"positions held: {held_txt}; "
-            f"open orders (do NOT re-propose these symbols): {', '.join(open_syms) or 'none'}"
+            f"组合资产 ${pre['equity']:,.0f}；现金 ${pre['cash']:,.0f}；"
+            f"单笔订单上限 ${max_order:,.0f}（组合资产的 {safeguards['maxOrderPct']}%）；"
+            f"现金比例不得低于 {safeguards['minCashPct']}%；"
+            f"单一标的仓位上限 {safeguards['maxPositionPct']}% "
+            f"（核心 ETF 为 {safeguards.get('maxCorePositionPct', 50)}%）；"
+            f"今天还能交易 {trades_left} 笔，最多只能提出 {trades_left} 笔建议；"
+            f"当前持仓：{held_txt}；"
+            f"未成交订单（不得重复建议）：{', '.join(open_syms) or '无'}"
         )
         plan = research_agent.run_research_cycle(
             strategy, safeguards, keys, lessons[:12],
@@ -269,10 +269,10 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
         rationale = plan.get("rationale", "")
         target = [t for t in plan.get("targetAllocation", []) if isinstance(t, dict) and t.get("symbol")]
         orders = [o for o in plan.get("orders", []) if isinstance(o, dict) and o.get("symbol") and o.get("qty")][:5]
-        plan_evidence = [{"source": "Target allocation", "timestamp": account_ts(),
-                          "summary": ", ".join(f"{t['symbol']} {t['pct']}%" for t in target) or "unchanged"}, *evidence]
-        db.add_decision(user["id"], {"action": "rebalance" if orders else "hold",
-            "rationale": rationale or "Portfolio already matches the target allocation.",
+        plan_evidence = [{"source": "目标配置", "timestamp": account_ts(),
+                          "summary": "、".join(f"{t['symbol']} {t['pct']}%" for t in target) or "保持不变"}, *evidence]
+        plan_record = db.add_decision(user["id"], {"action": "rebalance" if orders else "hold",
+            "rationale": rationale or "当前组合已经符合目标配置。",
             "strategyVersion": row["strategy_version"], "evidence": plan_evidence,
             "safeguards": [], "status": "approved", "runId": run_id})
         account = broker.account_snapshot(keys)
@@ -318,7 +318,7 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
 
             if qty < 1:
                 _note_needs(orig_qty)
-                skipped.append(f"{action} {symbol} (no room inside your limits)")
+                skipped.append(f"{action} {symbol}（当前风控范围内没有可用空间）")
                 continue
             checks = risk.run_safeguards(action=action, symbol=symbol, qty=qty, price=price,
                 account=account, safeguards=safeguards,
@@ -329,12 +329,12 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 if "Trade frequency" in fails:
                     need["maxTradesPerDay"] = min(10, trades_today + len(orders))
                 _note_needs(orig_qty)
-                skipped.append(f"{action} {qty} {symbol} ({', '.join(fails)})")
+                skipped.append(f"{action} {qty} 股 {symbol}（{'、'.join(fails)}）")
                 continue
             proposed_count += 1; pending.add(symbol)
             why = o.get("why", rationale)
             if qty != orig_qty:
-                why = f"{why} (sized down from {orig_qty} to {qty} shares to fit your safeguards)"
+                why = f"{why}（为符合风控限制，建议数量已从 {orig_qty} 股下调到 {qty} 股）"
             db.add_decision(user["id"], {"action": action, "symbol": symbol, "qty": qty,
                 "estValue": round(qty * price, 2), "rationale": why,
                 "strategyVersion": row["strategy_version"], "evidence": [],
@@ -342,8 +342,8 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
         if skipped:
             patch: dict[str, Any] = {
                 "rationale": plan_record["rationale"]
-                + "\n\nNot proposed (outside your safeguards): "
-                + "; ".join(skipped)
+                + "\n\n以下方案超出风控限制，未生成交易建议："
+                + "；".join(skipped)
             }
             if need:
                 patch["feedback"] = json.dumps(
@@ -351,10 +351,10 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
                 )
             db._rest("PATCH", "decisions",
                      params={"id": f"eq.{plan_record['id']}"}, json=patch)
-        summary = rationale or "Run complete — no findings this time."
+        summary = rationale or "本轮研究已完成，暂时没有值得采取行动的新发现。"
         if orders:
-            summary += "\n\nProposed: " + ", ".join(
-                f"{o.get('action','buy')} {o.get('qty')} {o.get('symbol')}" for o in orders
+            summary += "\n\n建议：" + "、".join(
+                f"{'卖出' if o.get('action') == 'sell' else '买入'} {o.get('qty')} 股 {o.get('symbol')}" for o in orders
             )
         # Chat-initiated research reports back into its conversation; scheduled
         # automations present their results on the Automations page instead.
@@ -376,13 +376,13 @@ def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
         if r["status"] == "running":
             started = datetime.fromisoformat(r["started_at"].replace("Z", "+00:00"))
             if datetime.now(timezone.utc) - started < timedelta(minutes=15):
-                raise HTTPException(status_code=409, detail="a research cycle is already running — results appear when it finishes")
-            db.finish_run(user["id"], r["id"], "error", "timed out")
+                raise HTTPException(status_code=409, detail="已有一轮研究正在运行，完成后会自动显示结果")
+            db.finish_run(user["id"], r["id"], "error", "运行超时")
     row = _agent_for(user)
     if not row["activated"]:
-        raise HTTPException(status_code=409, detail="finish agent setup and activate first")
+        raise HTTPException(status_code=409, detail="请先完成投资偏好设置并启用研究助手")
     if row["paused"]:
-        raise HTTPException(status_code=409, detail="agent is paused")
+        raise HTTPException(status_code=409, detail="研究助手当前已暂停")
     run = db.create_run(user["id"])
     _research_in_flight.add(user["id"])
     threading.Thread(target=_do_research, args=(user, row, run["id"]), daemon=True).start()
@@ -406,12 +406,12 @@ class SteerRequest(BaseModel):
 @app.post("/research-runs/{run_id}/steer")
 def steer(run_id: str, req: SteerRequest, user: dict = Depends(current_user)) -> dict[str, Any]:
     if not req.text.strip():
-        raise HTTPException(status_code=400, detail="empty steer")
+        raise HTTPException(status_code=400, detail="补充要求不能为空")
     run = db.steer_run(user["id"], run_id, req.text.strip()[:300])
     if not run:
-        raise HTTPException(status_code=404, detail="run not found")
+        raise HTTPException(status_code=404, detail="没有找到这次研究")
     return {"ok": True, "steer": run["steer"],
-            "note": "Guidance saved — it steers the next research cycle."}
+            "note": "补充要求已保存，将用于下一轮研究。"}
 
 
 def account_ts() -> str:
@@ -430,12 +430,12 @@ def approve(decision_id: str, req: ApproveRequest = None, user: dict = Depends(c
     keys = _keys_for(row)
     record = db.get_decision(user["id"], decision_id)
     if not record:
-        raise HTTPException(status_code=404, detail="decision not found")
+        raise HTTPException(status_code=404, detail="没有找到这条交易建议")
     if record["status"] != "proposed":
-        raise HTTPException(status_code=409, detail=f"decision is {record['status']}, not proposed")
+        raise HTTPException(status_code=409, detail="这条交易建议已经处理过")
     if req and req.qty is not None:
         if req.qty < 1:
-            raise HTTPException(status_code=400, detail="qty must be at least 1")
+            raise HTTPException(status_code=400, detail="交易数量至少为 1")
         record["qty"] = req.qty
 
     price = broker.latest_prices([record["symbol"]], keys).get(record["symbol"])
@@ -489,9 +489,9 @@ def reject(
 ) -> dict[str, Any]:
     record = db.get_decision(user["id"], decision_id)
     if not record:
-        raise HTTPException(status_code=404, detail="decision not found")
+        raise HTTPException(status_code=404, detail="没有找到这条交易建议")
     if record["status"] != "proposed":
-        raise HTTPException(status_code=409, detail=f"decision is {record['status']}, not proposed")
+        raise HTTPException(status_code=409, detail="这条交易建议已经处理过")
     fields: dict[str, Any] = {"status": "rejected"}
     if req.reason and req.reason.strip():
         fields["feedback"] = req.reason.strip()[:500]
@@ -522,7 +522,7 @@ def market_ticker(symbol: str) -> dict[str, Any]:
     sym = symbol.upper().strip()
     info = broker.asset_info(sym)
     if not info:
-        raise HTTPException(status_code=404, detail=f"{sym} is not a known US-listed asset")
+        raise HTTPException(status_code=404, detail=f"没有找到美股标的 {sym}")
     out: dict[str, Any] = {"info": info}
     try:
         out["indicators"] = broker.indicators(sym)
@@ -567,9 +567,9 @@ def automations(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
 @app.post("/automations")
 def create_automation(req: AutomationRequest, user: dict = Depends(current_user)) -> dict[str, Any]:
     if req.cadence not in ("manual", "daily", "weekly", "market_open"):
-        raise HTTPException(status_code=400, detail="bad cadence")
+        raise HTTPException(status_code=400, detail="不支持这个运行频率")
     if not req.title.strip() or not req.prompt.strip():
-        raise HTTPException(status_code=400, detail="title and prompt required")
+        raise HTTPException(status_code=400, detail="请填写任务名称和具体要求")
     return db.create_automation(user["id"], req.title.strip(), req.prompt.strip(),
                                 req.cadence, max(0, min(23, req.hourUtc)))
 
@@ -585,7 +585,7 @@ def patch_automation(auto_id: str, req: AutomationPatch, user: dict = Depends(cu
         fields["enabled"] = req.enabled
     updated = db.update_automation(user["id"], auto_id, fields)
     if not updated:
-        raise HTTPException(status_code=404, detail="not found")
+        raise HTTPException(status_code=404, detail="没有找到这个定时任务")
     return updated
 
 
@@ -613,9 +613,9 @@ def _start_automation_run(user_id: str, email: str, auto: dict) -> bool:
 def run_automation(auto_id: str, user: dict = Depends(current_user)) -> dict[str, Any]:
     autos = [a for a in db.list_automations(user["id"]) if a["id"] == auto_id]
     if not autos:
-        raise HTTPException(status_code=404, detail="not found")
+        raise HTTPException(status_code=404, detail="没有找到这个定时任务")
     if not _start_automation_run(user["id"], user["email"], autos[0]):
-        raise HTTPException(status_code=409, detail="agent inactive, paused, or already researching")
+        raise HTTPException(status_code=409, detail="研究助手尚未启用、已暂停，或正在进行另一轮研究")
     db.update_automation(user["id"], auto_id, {"last_run_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()})
     return {"ok": True}
 
@@ -677,6 +677,9 @@ research/trading to any list.
 - Rules must be concrete and checkable, and must always include an approval \
 rule ("Propose, don't execute — every order needs approval") unless the user \
 explicitly asked for autonomous mode.
+- Write every user-facing field in natural Simplified Chinese. Keep stock
+  symbols and the riskTolerance enum unchanged. Avoid translated English
+  phrasing; write as a native Chinese financial product would.
 - Write for a smart beginner: plain language, no jargon.
 
 Respond with JSON only, exactly this shape:
@@ -724,7 +727,7 @@ def _apply_instructions(user: dict[str, Any], row: dict[str, Any], instructions:
         result = json.loads(completion.choices[0].message.content or "{}")
         profile, strategy = result["profile"], result["strategy"]
     except (json.JSONDecodeError, KeyError) as exc:
-        raise HTTPException(status_code=502, detail=f"model returned bad JSON: {exc}")
+        raise HTTPException(status_code=502, detail="模型返回的研究策略格式无效，请重试")
 
     updated = db.update_agent(
         user["id"],
@@ -750,7 +753,7 @@ def interpret_profile(
     req: InterpretRequest, user: dict = Depends(current_user)
 ) -> dict[str, Any]:
     if not req.instructions.strip():
-        raise HTTPException(status_code=400, detail="instructions is empty")
+        raise HTTPException(status_code=400, detail="请先填写投资偏好")
     return _apply_instructions(user, _agent_for(user), req.instructions.strip())
 
 
@@ -788,6 +791,10 @@ Style: warm, concise, plain language for a smart beginner. A few sentences, \
 not essays. Never give advice about real-money investing; if asked, remind \
 the user this is a simulated learning account.
 
+Always answer in natural Simplified Chinese, even when the source data or the
+user's message is in English. Keep stock symbols unchanged. Translate and
+summarize English news instead of repeating it verbatim.
+
 ACCOUNT STATE:
 """
 
@@ -805,22 +812,22 @@ def _chat_tool(name: str, args: dict, keys, user=None, row=None, thread_id=None)
     try:
         if name == "start_research":
             if user is None or row is None:
-                return json.dumps({"error": "unavailable"})
+                return json.dumps({"error": "当前无法执行这项操作"}, ensure_ascii=False)
             if not row["activated"] or row["paused"]:
-                return json.dumps({"error": "agent is inactive or paused — activate/resume it first"})
+                return json.dumps({"error": "研究助手尚未启用或已暂停，请先启用或恢复"})
             if user["id"] in _research_in_flight:
-                return json.dumps({"error": "a research run is already in progress"})
+                return json.dumps({"error": "已有一轮研究正在进行"})
             run = db.create_run(user["id"])
             _research_in_flight.add(user["id"])
             threading.Thread(
                 target=_do_research,
                 args=(user, row, run["id"],
-                      {"title": "Research", "prompt": str(args.get("mission", ""))[:1500],
+                      {"title": "研究任务", "prompt": str(args.get("mission", ""))[:1500],
                        "thread_id": thread_id}),
                 daemon=True,
             ).start()
             return json.dumps({"ok": True, "runId": run["id"],
-                               "note": "Research started — it takes about a minute; the findings will be posted into this conversation and any trades appear as proposals here."})
+                               "note": "研究已经开始，通常需要约一分钟；结论会发到本次对话，交易建议会显示在研究助手页面。"})
         if name == "lookup_asset":
             sym = str(args["symbol"]).upper()
             ok, detail = broker.asset_ok(sym, keys)
@@ -834,9 +841,9 @@ def _chat_tool(name: str, args: dict, keys, user=None, row=None, thread_id=None)
             return json.dumps(broker.indicators(str(args["symbol"]).upper(), keys))
         if name == "get_recent_news":
             return json.dumps(broker.recent_news([x.strip().upper() for x in str(args["symbols"]).split(",")], 8, keys))
-        return json.dumps({"error": "unknown tool"})
-    except Exception as e:
-        return json.dumps({"error": str(e)[:200]})
+        return json.dumps({"error": "无法识别这项操作"}, ensure_ascii=False)
+    except Exception:
+        return json.dumps({"error": "操作暂时失败，请稍后重试"}, ensure_ascii=False)
 
 
 class ChatMessage(BaseModel):
@@ -852,7 +859,7 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]:
     if not req.messages:
-        raise HTTPException(status_code=400, detail="messages is empty")
+        raise HTTPException(status_code=400, detail="消息不能为空")
     row = _agent_for(user)
     keys = _keys_for(row)
 
@@ -910,7 +917,7 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
             try:
                 _apply_instructions(user, row, instruction)
                 strategy_updated = True
-                text += "\n\n(I've updated your strategy to reflect this.)"
+                text += "\n\n（我已根据这项要求更新你的研究策略。）"
             except Exception:
                 pass
     if len(req.messages) == 1:

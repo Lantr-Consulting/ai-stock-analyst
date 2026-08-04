@@ -9,14 +9,14 @@ import { activity as mockActivity } from "@/lib/mock";
 import type { ActivityEvent, ActivityKind, Decision } from "@/lib/types";
 
 const KIND_META: Record<ActivityKind, { label: string; dot: string }> = {
-  research: { label: "Research", dot: "var(--series-1)" },
-  proposal: { label: "Proposal", dot: "var(--series-1)" },
-  approval: { label: "Approval", dot: "var(--good)" },
-  order: { label: "Order", dot: "var(--series-3)" },
-  fill: { label: "Fill", dot: "var(--good)" },
-  blocked: { label: "Blocked", dot: "var(--critical)" },
-  summary: { label: "Summary", dot: "var(--series-4)" },
-  profile: { label: "Profile", dot: "var(--series-5)" },
+  research: { label: "研究", dot: "var(--series-1)" },
+  proposal: { label: "交易建议", dot: "var(--series-1)" },
+  approval: { label: "人工确认", dot: "var(--good)" },
+  order: { label: "订单", dot: "var(--series-3)" },
+  fill: { label: "成交", dot: "var(--good)" },
+  blocked: { label: "风控拦截", dot: "var(--critical)" },
+  summary: { label: "小结", dot: "var(--series-4)" },
+  profile: { label: "偏好", dot: "var(--series-5)" },
 };
 
 function toEvents(decisions: Decision[]): ActivityEvent[] {
@@ -24,8 +24,8 @@ function toEvents(decisions: Decision[]): ActivityEvent[] {
   for (const d of decisions) {
     const what =
       d.action === "hold" || !d.symbol
-        ? "Hold — no action"
-        : `${d.action === "buy" ? "Buy" : "Sell"} ${d.qty} ${d.symbol}${d.estValue ? ` (~${usd(d.estValue)})` : ""}`;
+        ? "继续持有，不操作"
+        : `${d.action === "buy" ? "买入" : "卖出"} ${d.qty} 股 ${d.symbol}${d.estValue ? `（约 ${usd(d.estValue)}）` : ""}`;
     if (d.order) {
       events.push({
         id: `${d.id}-order`,
@@ -33,9 +33,9 @@ function toEvents(decisions: Decision[]): ActivityEvent[] {
         kind: d.order.status === "filled" ? "fill" : "order",
         title:
           d.order.status === "filled"
-            ? `Filled: ${what}${d.order.fillPrice ? ` @ ${usd(d.order.fillPrice)}` : ""}`
-            : `Order ${d.order.status}: ${what}`,
-        detail: `Paper order ${d.order.id.slice(0, 8)} · decision ${d.id}`,
+            ? `已成交：${what}${d.order.fillPrice ? `，成交价 ${usd(d.order.fillPrice)}` : ""}`
+            : `模拟订单（${d.order.status}）：${what}`,
+        detail: `模拟订单 ${d.order.id.slice(0, 8)} · 决策 ${d.id}`,
       });
     }
     const kind: ActivityKind =
@@ -50,10 +50,10 @@ function toEvents(decisions: Decision[]): ActivityEvent[] {
       kind,
       title:
         d.status === "blocked"
-          ? `Blocked: ${what}`
+          ? `已被风控拦截：${what}`
           : d.action === "hold"
-            ? "Research cycle — no action"
-            : `Proposed: ${what}`,
+            ? "本轮研究结论：暂不操作"
+            : `研究助手建议：${what}`,
       detail: d.rationale,
     });
   }
@@ -77,20 +77,20 @@ export default function ActivityPage() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Activity</h1>
+        <h1 className="text-xl font-semibold tracking-tight">活动记录</h1>
         <p className="mt-0.5 text-sm text-ink-muted">
           {status === "signedOut" ? (
             <>
-              Sample data —{" "}
+              当前展示演示数据。{" "}
               <Link href="/signin" className="font-medium text-series-1 hover:underline">
-                sign in
+                登录
               </Link>{" "}
-              to see your own record
+              后可查看你的完整记录
             </>
           ) : status === "offline" ? (
-            "Sample data — backend unreachable"
+            "暂时无法连接服务，当前展示演示数据"
           ) : (
-            "Every research cycle, proposal, approval, order, and fill — the agent's complete, auditable record."
+            "从研究、建议到人工确认和模拟成交，每一步都留有可追溯记录。"
           )}
         </p>
       </header>
@@ -100,8 +100,7 @@ export default function ActivityPage() {
           <div className="h-40 animate-pulse rounded-xl bg-ink/5 dark:bg-white/10" />
         ) : events.length === 0 ? (
           <p className="text-sm text-ink-2">
-            Nothing yet — run a research cycle from the Proposals page and the
-            record starts here.
+            暂无记录。前往“研究助手”发起一次研究，这里就会开始记录全过程。
           </p>
         ) : (
           <ol className="relative flex flex-col">

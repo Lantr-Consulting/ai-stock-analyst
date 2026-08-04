@@ -42,12 +42,12 @@ def run_safeguards(
     def check(name: str, ok: bool, detail: str) -> None:
         checks.append({"name": name, "detail": detail, "status": "pass" if ok else "fail"})
 
-    ok, detail = asset_check if asset_check is not None else (True, "not checked")
-    check("Tradable asset", ok, detail)
+    ok, detail = asset_check if asset_check is not None else (True, "未单独检查")
+    check("标的可交易", ok, detail)
     check(
-        "Penny-stock floor",
+        "最低股价",
         price >= 3.0,
-        f"Price ${price:,.2f} {'≥' if price >= 3.0 else '<'} $3.00 minimum",
+        f"当前股价 ${price:,.2f}，最低要求为 $3.00",
     )
 
     if action == "buy":
@@ -55,42 +55,42 @@ def run_safeguards(
         cap = sg["maxCorePositionPct"] if is_core else sg["maxPositionPct"]
         resulting = (held.get(symbol, 0.0) + order_value) / equity * 100
         check(
-            "Position limit",
+            "仓位上限",
             resulting <= cap,
-            f"Resulting allocation {resulting:.1f}% vs {cap:.0f}% "
-            f"{'core' if is_core else 'single-position'} limit",
+            f"交易后仓位为 {resulting:.1f}%，上限为 {cap:.0f}%"
+            f"（{'核心 ETF' if is_core else '单一标的'}）",
         )
         cash_after = (cash - order_value) / equity * 100
         check(
-            "Cash floor",
+            "最低现金比例",
             cash_after >= sg["minCashPct"],
-            f"Cash after purchase {cash_after:.1f}% vs {sg['minCashPct']:.0f}% minimum",
+            f"买入后现金比例为 {cash_after:.1f}%，最低要求为 {sg['minCashPct']:.0f}%",
         )
     else:  # sell
         have = held.get(symbol, 0.0)
         check(
-            "Position exists",
+            "持仓充足",
             have >= order_value * 0.99,
-            f"Selling ~${order_value:,.0f} of ${have:,.0f} held in {symbol}",
+            f"计划卖出约 ${order_value:,.0f}，当前持有 {symbol} 市值约 ${have:,.0f}",
         )
 
     order_pct = order_value / equity * 100
     check(
-        "Order size",
+        "单笔订单上限",
         order_pct <= sg["maxOrderPct"],
-        f"Order is {order_pct:.1f}% of portfolio vs {sg['maxOrderPct']:.0f}% limit",
+        f"订单占组合资产 {order_pct:.1f}%，上限为 {sg['maxOrderPct']:.0f}%",
     )
 
     check(
-        "Trade frequency",
+        "每日交易次数",
         trades_today < sg["maxTradesPerDay"],
-        f"{trades_today} of {sg['maxTradesPerDay']} trades used today",
+        f"今天已使用 {trades_today}/{sg['maxTradesPerDay']} 笔交易额度",
     )
 
     check(
-        "No duplicate proposal",
+        "无重复建议",
         symbol not in pending_symbols,
-        f"{'No' if symbol not in pending_symbols else 'Existing'} pending proposal for {symbol}",
+        f"{symbol} {'没有' if symbol not in pending_symbols else '已有'}待确认建议",
     )
 
     return checks

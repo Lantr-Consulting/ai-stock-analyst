@@ -1,97 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { getMe, isSignedOut, setAlpacaKeys, updateSettings } from "@/lib/api";
+import { getMe, updateSettings } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { safeguards as initial } from "@/lib/mock";
 import { useToast } from "@/components/toast";
 
 function BrokerageCard() {
-  const [state, setState] = useState<"loading" | "signedOut" | "connected" | "shared">(
-    "loading"
-  );
-  const [apiKey, setApiKey] = useState("");
-  const [secretKey, setSecretKey] = useState("");
-  const [note, setNote] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    getMe()
-      .then((me) => setState(me.hasAlpacaKeys ? "connected" : "shared"))
-      .catch((e) => setState(isSignedOut(e) ? "signedOut" : "shared"));
-  }, []);
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!apiKey.trim() || !secretKey.trim() || busy) return;
-    setBusy(true);
-    setNote(null);
-    try {
-      await setAlpacaKeys(apiKey.trim(), secretKey.trim());
-      setState("connected");
-      setApiKey("");
-      setSecretKey("");
-      setNote("Connected — your agent now trades your own paper account.");
-    } catch (err) {
-      setNote(
-        err instanceof Error ? err.message : "Couldn't save keys — try again."
-      );
-    }
-    setBusy(false);
-  }
-
   return (
-    <Card title="Brokerage connection (Alpaca paper)">
-      {state === "signedOut" ? (
-        <p className="text-sm text-ink-2">
-          <Link href="/signin" className="font-medium text-series-1 hover:underline">
-            Sign in
-          </Link>{" "}
-          to connect your own free Alpaca paper account. Until then, the shared
-          demo account is shown.
-        </p>
-      ) : state === "connected" ? (
-        <p className="text-sm text-ink-2">
-          <span className="font-medium text-delta-up dark:text-good">
-            Connected
-          </span>{" "}
-          — your agent trades your own paper account. Paste new keys below to
-          replace them.
-        </p>
-      ) : state === "shared" ? (
-        <p className="text-sm text-ink-2">
-          Using the <span className="font-medium">shared demo account</span>.
-          Create a free paper account at alpaca.markets (no credit card),
-          generate paper API keys, and connect them here — then your agent
-          manages a portfolio that&apos;s yours alone.
-        </p>
-      ) : null}
-      {(state === "shared" || state === "connected") && (
-        <form onSubmit={save} className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Paper API key"
-            className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
-          />
-          <input
-            value={secretKey}
-            onChange={(e) => setSecretKey(e.target.value)}
-            type="password"
-            placeholder="Paper secret key"
-            className="flex-1 rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
-          >
-            {busy ? "Checking…" : "Connect"}
-          </button>
-        </form>
-      )}
-      {note && <p className="mt-2 text-xs text-ink-2">{note}</p>}
+    <Card title="模拟账户">
+      <p className="text-sm leading-relaxed text-ink-2">
+        本项目接入 Alpaca Paper Trading，仅用于展示美股研究与模拟交易流程，不涉及真实资金。
+        公开演示不收集个人券商密钥；所有模拟订单都必须由用户逐笔确认。
+      </p>
     </Card>
   );
 }
@@ -133,13 +54,13 @@ export default function SettingsPage() {
     setSaveNote(null);
     try {
       await updateSettings(fields);
-      setSaveNote("Saved — the risk engine now enforces these values.");
+      setSaveNote("已保存，风控引擎会按新数值执行检查。");
       toast("success", fields.paused !== undefined
-        ? fields.paused ? "Agent paused — pending proposals stay put, nothing new runs." : "Agent resumed."
-        : "Safeguards saved — enforced on every order from now on.");
+        ? fields.paused ? "研究助手已暂停，不会发起新的研究。" : "研究助手已恢复。"
+        : "风控设置已保存，之后的每笔建议都会重新检查。 ");
     } catch {
-      setSaveNote("Couldn't save — sign in and try again.");
-      toast("error", "Couldn't save settings — sign in and try again.");
+      setSaveNote("暂时无法保存，请登录后重试。");
+      toast("error", "暂时无法保存设置，请登录后重试。");
     }
     setSaving(false);
   }
@@ -148,26 +69,25 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-5">
       <header>
         <h1 className="text-xl font-semibold tracking-tight">
-          Settings &amp; safeguards
+          设置与风控
         </h1>
         <p className="mt-0.5 text-sm text-ink-muted">
-          Deterministic limits enforced by the risk engine — outside the
-          model&apos;s control. Every proposed order must pass all of them.
+          以下限制由独立风控引擎执行，不受模型控制；每笔模拟订单都必须通过全部检查。
         </p>
       </header>
 
       <BrokerageCard />
 
-      <Card title="Agent status">
+      <Card title="研究助手状态">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-sm font-medium">
-              {sg.paused ? "Paused" : "Active"}
+              {sg.paused ? "已暂停" : "运行中"}
             </div>
             <p className="mt-0.5 text-sm text-ink-2">
               {sg.paused
-                ? "The agent is stopped. Pending proposals are invalidated and no research cycles run."
-                : "The agent runs research cycles and proposes trades within your safeguards."}
+                ? "研究助手已停止，不会运行新的研究；待确认建议仍会保留。"
+                : "研究助手可以运行研究，并在风控范围内提出模拟交易建议。"}
             </p>
           </div>
           <button
@@ -182,62 +102,48 @@ export default function SettingsPage() {
                 : "bg-critical text-white hover:opacity-90"
             }`}
           >
-            {sg.paused ? "Resume agent" : "Pause agent (kill switch)"}
+            {sg.paused ? "恢复运行" : "立即暂停"}
           </button>
         </div>
       </Card>
 
-      <Card title="Approval mode">
-        <div className="flex flex-col gap-2">
-          <ModeRow
-            checked={sg.approvalMode === "approve_each"}
-            title="Approve each trade"
-            body="Every order waits for your explicit approval before it is submitted. Default."
-            onSelect={() => {
-              setSg((s) => ({ ...s, approvalMode: "approve_each" }));
-              persist({ safeguards: { approvalMode: "approve_each" } });
-            }}
-          />
-          <ModeRow
-            checked={sg.approvalMode === "autonomous_within_limits"}
-            title="Autonomous within limits"
-            body="The agent may execute paper trades on its own, but only inside the limits below. You are notified of every order. (Execution arrives with always-on mode.)"
-            onSelect={() => {
-              setSg((s) => ({ ...s, approvalMode: "autonomous_within_limits" }));
-              persist({ safeguards: { approvalMode: "autonomous_within_limits" } });
-            }}
-          />
+      <Card title="确认方式">
+        <div className="rounded-lg border border-series-1 bg-series-1/5 px-4 py-3">
+          <div className="text-sm font-medium">逐笔人工确认</div>
+          <p className="mt-1 text-sm text-ink-2">
+            研究助手只能提出建议。每笔模拟订单在提交前都要由你明确确认，系统不会自动交易。
+          </p>
         </div>
       </Card>
 
-      <Card title="Risk limits">
+      <Card title="风控限制">
         <div className="grid gap-4 sm:grid-cols-2">
           <Limit
-            label="Max position size"
+            label="单一标的仓位上限"
             value={sg.maxPositionPct}
-            suffix="% of portfolio"
-            hint="A buy is blocked if the resulting allocation would exceed this."
+            suffix="% 组合资产"
+            hint="买入后若超过此比例，订单会被拦截。"
             onChange={(v) => setSg((s) => ({ ...s, maxPositionPct: v }))}
           />
           <Limit
-            label="Minimum cash"
+            label="最低现金比例"
             value={sg.minCashPct}
-            suffix="% of portfolio"
-            hint="Purchases cannot pull cash below this floor."
+            suffix="% 组合资产"
+            hint="买入后现金不能低于此比例。"
             onChange={(v) => setSg((s) => ({ ...s, minCashPct: v }))}
           />
           <Limit
-            label="Max single order"
+            label="单笔订单上限"
             value={sg.maxOrderPct}
-            suffix="% of portfolio"
-            hint="No single order can exceed this share of total value."
+            suffix="% 组合资产"
+            hint="任何一笔订单都不能超过组合总资产的这个比例。"
             onChange={(v) => setSg((s) => ({ ...s, maxOrderPct: v }))}
           />
           <Limit
-            label="Max trades per day"
+            label="每日交易上限"
             value={sg.maxTradesPerDay}
-            suffix="trades"
-            hint="New trades beyond this count wait for the next day."
+            suffix="笔"
+            hint="达到上限后，新的交易建议要等到下一个交易日。"
             onChange={(v) => setSg((s) => ({ ...s, maxTradesPerDay: v }))}
           />
         </div>
@@ -258,17 +164,16 @@ export default function SettingsPage() {
               disabled={saving}
               className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Save limits"}
+              {saving ? "正在保存…" : "保存限制"}
             </button>
           </div>
         )}
       </Card>
 
-      <Card title="Watchlist">
+      <Card title="研究范围">
         <p className="mb-3 text-sm text-ink-2">
-          The agent&apos;s starting point — it also scans market movers and can
-          propose any US-listed stock. Automatic checks still reject unknown,
-          OTC, and sub-$3 symbols. Edit the list on the Agent setup page.
+          研究助手会优先查看这些标的，也会关注美股市场异动。系统会自动排除未知代码、
+          场外交易标的和股价低于 3 美元的股票。可在“投资偏好”中修改范围。
         </p>
         <div className="flex flex-wrap gap-1.5">
           {sg.approvedUniverse.map((s) => (
@@ -284,44 +189,10 @@ export default function SettingsPage() {
 
       <p className="text-xs text-ink-muted">
         {live
-          ? "These are your saved safeguards — the risk engine enforces them on every proposed order. Edit your universe on the Agent setup page."
-          : "Sample values — sign in to configure your own safeguards."}
+          ? "以上为已保存的风控设置，每笔交易建议都会按这些规则检查。"
+          : "当前为演示参数，登录后可配置自己的风控设置。"}
       </p>
     </div>
-  );
-}
-
-function ModeRow({
-  checked,
-  title,
-  body,
-  onSelect,
-}: {
-  checked: boolean;
-  title: string;
-  body: string;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      onClick={onSelect}
-      className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-        checked
-          ? "border-series-1 bg-series-1/5"
-          : "border-hairline hover:bg-ink/[0.03] dark:hover:bg-white/5"
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className={`inline-block size-3.5 rounded-full border-2 ${
-            checked ? "border-series-1 bg-series-1" : "border-baseline"
-          }`}
-        />
-        <span className="text-sm font-medium">{title}</span>
-      </div>
-      <p className="mt-1 pl-[22px] text-sm text-ink-2">{body}</p>
-    </button>
   );
 }
 

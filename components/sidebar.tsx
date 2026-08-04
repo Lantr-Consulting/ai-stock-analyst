@@ -25,7 +25,7 @@ function Icon({ children }: { children: ReactNode }) {
 const NAV = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    label: "投资组合",
     icon: (
       <Icon>
         <path d="M3 3v18h18" />
@@ -35,7 +35,7 @@ const NAV = [
   },
   {
     href: "/discover",
-    label: "Discover",
+    label: "行情",
     icon: (
       <Icon>
         <circle cx="11" cy="11" r="7" />
@@ -45,7 +45,7 @@ const NAV = [
   },
   {
     href: "/chat",
-    label: "Analyst",
+    label: "研究助手",
     icon: (
       <Icon>
         <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 12.5 3a8.5 8.5 0 0 1 8.5 8.5Z" />
@@ -54,7 +54,7 @@ const NAV = [
   },
   {
     href: "/automations",
-    label: "Automations",
+    label: "定时任务",
     icon: (
       <Icon>
         <circle cx="12" cy="12" r="9" />
@@ -64,7 +64,7 @@ const NAV = [
   },
   {
     href: "/setup",
-    label: "Investor profile",
+    label: "投资偏好",
     icon: (
       <Icon>
         <line x1="4" y1="21" x2="4" y2="13" />
@@ -81,7 +81,7 @@ const NAV = [
   },
   {
     href: "/settings",
-    label: "Settings & safeguards",
+    label: "设置与风控",
     icon: (
       <Icon>
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -102,7 +102,7 @@ function Wordmark() {
           AI Stock Analyst
         </span>
         <span className="block text-[11px] leading-tight text-ink-muted">
-          Paper trading · sample data
+          模拟交易 · 演示数据
         </span>
       </span>
     </div>
@@ -138,9 +138,9 @@ export function Sidebar() {
       <div className="mt-auto flex flex-col gap-3 px-3">
         <AccountBox />
         <div className="text-[11px] leading-relaxed text-ink-muted">
-          A Lantr sample project.
+          Lantr 往届学生作品 · 课程结束后继续托管。
           <br />
-          Simulated — not financial advice.
+          仅供模拟体验，不构成投资建议。
         </div>
       </div>
     </aside>
@@ -168,7 +168,7 @@ function AccountBox() {
         href="/signin"
         className="btn-ghost px-3 py-2 text-center text-sm font-medium  dark:hover:bg-white/5"
       >
-        Sign in
+        登录
       </Link>
     );
   }
@@ -180,7 +180,7 @@ function AccountBox() {
         onClick={() => supabase.auth.signOut().then(() => window.location.assign("/"))}
         className="mt-0.5 text-xs text-ink-muted hover:text-ink"
       >
-        Sign out
+        退出登录
       </button>
     </div>
   );

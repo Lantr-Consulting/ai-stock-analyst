@@ -15,7 +15,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
     name: p.name,
     value: p.shares * p.price,
   }));
-  rows.push({ label: "Cash", name: "Available cash", value: snapshot.cash });
+  rows.push({ label: "现金", name: "可用现金", value: snapshot.cash });
   const total = rows.reduce((s, r) => s + r.value, 0);
 
   return (
@@ -24,7 +24,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
         className="flex h-4 w-full overflow-hidden rounded-full"
         style={{ gap: 2 }}
         role="img"
-        aria-label="Portfolio allocation"
+        aria-label="投资组合配置"
       >
         {rows.map((r, i) => (
           <div
@@ -33,7 +33,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
             style={{
               width: `${(r.value / total) * 100}%`,
               background:
-                r.label === "Cash" ? "var(--baseline)" : SERIES[i % SERIES.length],
+                r.label === "现金" ? "var(--baseline)" : SERIES[i % SERIES.length],
             }}
           />
         ))}
@@ -46,7 +46,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
               className="inline-block size-2.5 shrink-0 rounded-[3px]"
               style={{
                 background:
-                  r.label === "Cash"
+                  r.label === "现金"
                     ? "var(--baseline)"
                     : SERIES[i % SERIES.length],
               }}

@@ -39,12 +39,11 @@ export function TopBar() {
     <div className="relative flex items-center gap-2 border-b border-hairline bg-page px-5 py-1.5">
       <span aria-hidden className="inline-block size-2 rounded-full bg-warning" />
       <span className="text-[11px] text-ink-muted">
-        <strong className="font-semibold text-ink">Simulated</strong> — paper
-        trading. No real money, not financial advice.
+        <strong className="font-semibold text-ink">模拟交易</strong> — 不涉及真实资金，也不构成投资建议。
       </span>
       <button
         onClick={toggleTheme}
-        aria-label="Toggle light/dark theme"
+        aria-label="切换深色或浅色模式"
         className="ml-auto rounded-full p-1.5 text-ink-2 hover:bg-ink/10 hover:text-ink"
       >
         {theme === "dark" ? (
@@ -60,7 +59,7 @@ export function TopBar() {
       </button>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label="Activity notifications"
+        aria-label="活动通知"
         className="relative rounded-full p-1.5 text-ink-2 hover:bg-ink/10 hover:text-ink"
       >
         <svg
@@ -82,18 +81,18 @@ export function TopBar() {
       {open && (
         <>
           <button
-            aria-label="Close notifications"
+            aria-label="关闭通知"
             className="fixed inset-0 z-40 cursor-default"
             onClick={() => setOpen(false)}
           />
           <div className="absolute right-3 top-9 z-50 w-80 rounded-2xl border border-hairline bg-surface p-2 shadow-2xl animate-[toast-in_.15s_ease-out]">
             <div className="flex items-center justify-between px-3 py-2">
               <span className="text-[11px] font-bold uppercase tracking-wide text-ink-muted">
-                Recent activity
+                最近活动
               </span>
               {pending > 0 && (
                 <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">
-                  {pending} awaiting approval
+                  {pending} 笔等待确认
                 </span>
               )}
             </div>
@@ -119,11 +118,10 @@ export function TopBar() {
                 <span className="min-w-0">
                   <span className="block truncate text-sm">
                     {d.symbol
-                      ? `${d.action === "sell" ? "Sell" : "Buy"} ${d.qty} ${d.symbol}`
+                      ? `${d.action === "sell" ? "卖出" : "买入"} ${d.qty} 股 ${d.symbol}`
                       : d.action === "rebalance"
-                        ? "Portfolio plan"
-                        : "Hold"}
-                    <span className="ml-1.5 text-xs text-ink-muted">{d.status}</span>
+                        ? "投资组合调整方案"
+                        : "继续持有"}
                   </span>
                   <span className="block text-[11px] text-ink-muted">
                     {dateTime(d.createdAt)}
@@ -133,7 +131,7 @@ export function TopBar() {
             ))}
             {items.length === 0 && (
               <p className="px-3 py-2 text-sm text-ink-muted">
-                Nothing yet — run research from the Analyst tab.
+                还没有活动记录，可以从“研究助手”页面开始一次研究。
               </p>
             )}
             <Link
@@ -141,7 +139,7 @@ export function TopBar() {
               onClick={() => setOpen(false)}
               className="mt-1 block rounded-lg px-3 py-2 text-xs font-semibold text-series-1 hover:bg-white/5"
             >
-              Open full activity →
+              查看全部活动 →
             </Link>
           </div>
         </>

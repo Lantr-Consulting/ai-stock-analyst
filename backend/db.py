@@ -203,7 +203,7 @@ def supersede_pending(user_id: str) -> int:
     rows = _rest(
         "PATCH", "decisions",
         params={"user_id": f"eq.{user_id}", "status": "eq.proposed"},
-        json={"status": "rejected", "feedback": "Superseded by a newer research cycle."},
+        json={"status": "rejected", "feedback": "已由更新一轮的研究结果替代。"},
         extra_headers={"Prefer": "return=representation"},
     )
     return len(rows or [])
@@ -252,7 +252,7 @@ def recent_steers(user_id: str, limit: int = 5) -> list[str]:
     return out[-limit:]
 
 
-def create_thread(user_id: str, title: str = "New chat") -> dict[str, Any]:
+def create_thread(user_id: str, title: str = "新对话") -> dict[str, Any]:
     row = {"id": f"th-{uuid.uuid4().hex[:8]}", "user_id": user_id, "title": title[:80]}
     return _rest("POST", "threads", json=row,
                  extra_headers={"Prefer": "return=representation"})[0]

@@ -58,7 +58,7 @@ export default function SetupPage() {
     const t = instructions.trim();
     if (!t) {
       setNote(
-        "Type an instruction first — for example, a sector you like or a company to avoid."
+        "请先写下你的偏好，例如喜欢的行业或希望避开的公司。"
       );
       return;
     }
@@ -70,14 +70,14 @@ export default function SetupPage() {
       setInstructions("");
       setUpdated(true);
       setNote(
-        "Saved — this is now the strategy your agent researches with. Review how it interpreted you below."
+        "已保存。研究助手之后会按这套策略开展研究，请在下方确认它是否理解准确。"
       );
-      toast("success", "Profile updated — your agent now researches with the new strategy.");
+      toast("success", "投资偏好已更新，研究助手会采用新的策略。 ");
     } catch (e) {
       setNote(
         isSignedOut(e)
-          ? "Sign in first — your profile is saved to your own agent."
-          : "Couldn't reach the analyst backend — try again in a moment."
+          ? "请先登录，投资偏好会保存到你的账户中。"
+          : "暂时无法连接研究服务，请稍后再试。"
       );
     }
     setBusy(false);
@@ -88,28 +88,28 @@ export default function SetupPage() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Investor profile</h1>
+        <h1 className="text-xl font-semibold tracking-tight">投资偏好</h1>
         <p className="mt-0.5 text-sm text-ink-muted">
           {status === "signedOut" ? (
             <>
-              Sample profile —{" "}
+              当前展示示例偏好。{" "}
               <Link href="/signin" className="font-medium text-series-1 hover:underline">
-                sign in
+                登录
               </Link>{" "}
-              to teach your own agent
+              后可设置你的研究助手
             </>
           ) : (
-            "Tell the agent what matters in plain English. It turns your instructions into an investor profile and a personalised strategy — saved to your agent and used on every research cycle."
+            "直接说清楚你的目标、风险承受能力和关注方向；助手会整理成投资偏好与研究策略，并在每轮研究中使用。"
           )}
         </p>
       </header>
 
-      <Card title="Tell the agent what matters">
+      <Card title="告诉助手你在意什么">
         <textarea
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           rows={3}
-          placeholder={`e.g. "I like large technology companies, I'm comfortable with moderate risk, and I think AI infrastructure will continue growing."`}
+          placeholder="例如：我偏好大型科技公司，能承受中等风险，并认为 AI 基础设施还会持续增长。"
           className="w-full resize-none rounded-lg border border-hairline bg-page px-3.5 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-series-1"
         />
         <div className="mt-3 flex items-center justify-end">
@@ -118,7 +118,7 @@ export default function SetupPage() {
             disabled={busy || status === "signedOut"}
             className="btn-primary px-3.5 py-2 text-sm font-medium  disabled:opacity-50"
           >
-            {busy ? "Interpreting…" : "Update profile"}
+            {busy ? "正在理解…" : "更新偏好"}
           </button>
         </div>
         {note && <p className="mt-2 text-xs text-ink-2">{note}</p>}
@@ -136,24 +136,22 @@ export default function SetupPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card
-          title={`Investor profile · v${v.profileVersion}`}
+          title={`偏好摘要 · 版本 ${v.profileVersion}`}
           className={updated ? "ring-1 ring-series-1/40" : ""}
         >
           {!v.profile.goals ? (
             <p className="text-sm text-ink-2">
-              Nothing here yet — describe how you invest above and the agent
-              builds your profile from your own words.
+              这里还没有内容。请在上方描述你的投资方式，助手会根据你的原话整理偏好。
             </p>
           ) : (
             <div className="flex flex-col gap-4">
               <p className="text-sm leading-relaxed">{v.profile.goals}</p>
               <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
                 <ProfileStat
-                  label="Risk"
+                  label="风险偏好"
                   value={
                     v.profile.riskTolerance
-                      ? v.profile.riskTolerance[0].toUpperCase() +
-                        v.profile.riskTolerance.slice(1)
+                      ? riskLabel(v.profile.riskTolerance)
                       : "—"
                   }
                   tone={
@@ -171,13 +169,13 @@ export default function SetupPage() {
                         : 2
                   }
                 />
-                <ProfileStat label="Horizon" value={v.profile.timeHorizon ?? "—"} />
-                <ProfileStat label="Cadence" value={v.profile.tradingFrequency ?? "—"} />
+                <ProfileStat label="投资期限" value={v.profile.timeHorizon ?? "—"} />
+                <ProfileStat label="交易频率" value={v.profile.tradingFrequency ?? "—"} />
               </div>
               {(v.profile.preferredSectors ?? []).length > 0 && (
                 <div>
                   <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                    Leaning into
+                    偏好方向
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {(v.profile.preferredSectors ?? []).map((x) => (
@@ -191,7 +189,7 @@ export default function SetupPage() {
               {(v.profile.avoid ?? []).length > 0 && (
                 <div>
                   <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                    Staying away from
+                    主动规避
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {(v.profile.avoid ?? []).map((x) => (
@@ -207,7 +205,7 @@ export default function SetupPage() {
           {v.rawInstructions.length > 0 && (
             <div className="mt-4 border-t border-hairline pt-3">
               <div className="text-xs font-medium text-ink-muted">
-                Your instructions, verbatim
+                你的原始要求
               </div>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {v.rawInstructions.map((r) => (
@@ -221,7 +219,7 @@ export default function SetupPage() {
         </Card>
 
         <Card
-          title={`Strategy preview · v${v.strategyVersion}`}
+          title={`研究策略 · 版本 ${v.strategyVersion}`}
           className={updated ? "ring-1 ring-series-1/40" : ""}
         >
           <p className="text-sm leading-relaxed text-ink-2">
@@ -230,7 +228,7 @@ export default function SetupPage() {
           {v.strategy.watching?.length > 0 && (
             <div className="mt-4">
               <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                Watching
+                重点关注
               </div>
               <ul className="flex flex-col gap-1.5">
                 {v.strategy.watching.map((w) => (
@@ -244,7 +242,7 @@ export default function SetupPage() {
           )}
           <div className="mt-4">
             <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-              Operating rules
+              执行规则
             </div>
             <ul className="flex flex-col gap-1.5">
               {v.strategy.rules.map((r) => (
@@ -257,7 +255,7 @@ export default function SetupPage() {
           </div>
           <div className="mt-4">
             <div className="text-xs font-medium text-ink-muted">
-              Watchlist
+              研究范围
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {v.strategy.universe.map((s) => (
@@ -308,9 +306,9 @@ function ActivateCard({
       await activateAgent();
       setDone(true);
       onActivated();
-      toast("success", "Agent activated — run your first research cycle from Proposals.");
+      toast("success", "研究助手已启用，可以开始第一轮研究了。 ");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Activation failed — try again.");
+      setErr(e instanceof Error && e.message.includes("activate") ? "启用失败，请检查设置后重试。" : "暂时无法启用，请稍后再试。 ");
     }
     setBusy(false);
   }
@@ -320,10 +318,10 @@ function ActivateCard({
       <Card className="ring-1 ring-good/40">
         <p className="text-sm">
           <span className="font-medium text-delta-up dark:text-good">
-            Agent activated.
+            研究助手已启用。
           </span>{" "}
           <Link href="/proposals" className="font-medium text-series-1 hover:underline">
-            Run your first research cycle →
+            开始第一轮研究 →
           </Link>
         </p>
       </Card>
@@ -331,20 +329,18 @@ function ActivateCard({
   }
 
   return (
-    <Card title="Step 2 — review and activate" className="ring-1 ring-series-1/40">
+    <Card title="第二步 · 确认并启用" className="ring-1 ring-series-1/40">
       {!ready ? (
         <p className="text-sm text-ink-2">
-          Your agent is <span className="font-medium">not active yet</span>.
-          Start above: describe how you invest, and the agent will propose a
-          strategy, watchlist, and safeguards for you to review here.
+          研究助手<span className="font-medium">尚未启用</span>。请先在上方描述你的投资方式，
+          助手会整理出策略、研究范围和风控参数，供你确认。
         </p>
       ) : (
         <div className="flex flex-col gap-4">
           <div>
             <div className="mb-2 text-xs font-medium text-ink-muted">
-              Starting watchlist — the agent researches these first, but also
-              scans market movers and may propose any US-listed stock that
-              fits your profile. Edit freely, or leave as-is.
+              初始研究范围：助手会优先研究这些标的，也会查看美股市场异动。
+              你可以自由增删，也可以保留当前设置。
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {universe.map((s) => (
@@ -354,7 +350,7 @@ function ActivateCard({
                 >
                   {s}
                   <button
-                    aria-label={`Remove ${s}`}
+                    aria-label={`移除 ${s}`}
                     onClick={() => setUniverse((u) => u.filter((x) => x !== s))}
                     className="text-ink-muted hover:text-critical"
                   >
@@ -374,7 +370,7 @@ function ActivateCard({
                 <input
                   value={addSym}
                   onChange={(e) => setAddSym(e.target.value)}
-                  placeholder="+ add symbol"
+                  placeholder="+ 添加代码"
                   className="w-28 rounded-full border border-dashed border-hairline bg-transparent px-2.5 py-0.5 text-xs outline-none placeholder:text-ink-muted focus:border-series-1"
                 />
               </form>
@@ -383,28 +379,26 @@ function ActivateCard({
 
           <div>
             <div className="mb-2 text-xs font-medium text-ink-muted">
-              Safeguards — hard limits enforced by code on every order. Yours
-              to set.
+              风控限制：每笔模拟订单都会由代码强制检查，具体数值由你设定。
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <NumField label="Max position %" value={sg.maxPositionPct} onChange={(v) => setSg((s) => ({ ...s, maxPositionPct: v }))} />
-              <NumField label="Min cash %" value={sg.minCashPct} onChange={(v) => setSg((s) => ({ ...s, minCashPct: v }))} />
-              <NumField label="Max order %" value={sg.maxOrderPct} onChange={(v) => setSg((s) => ({ ...s, maxOrderPct: v }))} />
-              <NumField label="Trades / day" value={sg.maxTradesPerDay} onChange={(v) => setSg((s) => ({ ...s, maxTradesPerDay: v }))} />
+              <NumField label="单一标的上限 %" value={sg.maxPositionPct} onChange={(v) => setSg((s) => ({ ...s, maxPositionPct: v }))} />
+              <NumField label="最低现金 %" value={sg.minCashPct} onChange={(v) => setSg((s) => ({ ...s, minCashPct: v }))} />
+              <NumField label="单笔订单上限 %" value={sg.maxOrderPct} onChange={(v) => setSg((s) => ({ ...s, maxOrderPct: v }))} />
+              <NumField label="每日最多交易" value={sg.maxTradesPerDay} onChange={(v) => setSg((s) => ({ ...s, maxTradesPerDay: v }))} />
             </div>
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-ink-muted">
-              Nothing runs until you activate. You can change all of this any
-              time in Settings.
+              启用前不会运行任何研究；之后也可以随时在“设置与风控”中修改。
             </p>
             <button
               onClick={activate}
               disabled={busy || universe.length === 0}
               className="shrink-0 btn-primary px-4 py-2 text-sm font-medium  disabled:opacity-50"
             >
-              {busy ? "Activating…" : "Activate agent"}
+              {busy ? "正在启用…" : "启用研究助手"}
             </button>
           </div>
           {err && <p className="text-xs text-critical">{err}</p>}
@@ -412,6 +406,14 @@ function ActivateCard({
       )}
     </Card>
   );
+}
+
+function riskLabel(value: string) {
+  return {
+    conservative: "保守",
+    moderate: "稳健",
+    aggressive: "积极",
+  }[value] ?? value;
 }
 
 function NumField({
