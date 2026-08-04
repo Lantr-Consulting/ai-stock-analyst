@@ -66,10 +66,9 @@ Discipline:
   or sub-$3 names; a deterministic engine rejects them anyway.
 
 Language:
-- Write every user-facing value in natural Simplified Chinese, especially
-  "why" and "rationale". Keep stock symbols, JSON keys, and the action enum
-  ("buy" / "sell") unchanged. Translate and summarize English source material
-  instead of copying English headlines into the explanation.
+- {language_rule}
+- Keep stock symbols, JSON keys, and the action enum ("buy" / "sell")
+  unchanged. Summarize source material instead of copying headlines.
 
 When done researching, respond with ONLY a JSON object, no prose:
 {{"targetAllocation": [{{"symbol": "XYZ" or "CASH", "pct": <number>}}, ...],
@@ -157,6 +156,7 @@ def run_research_cycle(
     lessons: list[str] | None = None,
     mission: str | None = None,
     constraints: str | None = None,
+    language: str = "zh",
 ) -> dict[str, Any]:
     """Returns {action, symbol, qty, rationale, evidence:[...]}."""
     prompt = ChatPromptTemplate.from_messages(
@@ -182,6 +182,11 @@ def run_research_cycle(
             "universe": ", ".join(strategy.get("universe", [])),
             "max_order_pct": safeguards.get("maxOrderPct", 10),
             "lessons": "\n".join(f"- {l}" for l in (lessons or [])) or "- (none yet)",
+            "language_rule": (
+                "Write every user-facing value in natural English."
+                if language == "en"
+                else "Write every user-facing value in natural Simplified Chinese."
+            ),
         }
     )
 
@@ -201,7 +206,11 @@ def run_research_cycle(
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not match:
         return {"targetAllocation": [], "orders": [],
-                "rationale": f"本轮研究没有生成可解析的方案。模型原始输出：{raw[:200]}",
+                "rationale": (
+                    f"The research run did not return a readable plan. Raw model output: {raw[:200]}"
+                    if language == "en"
+                    else f"本轮研究没有生成可解析的方案。模型原始输出：{raw[:200]}"
+                ),
                 "evidence": evidence}
     plan = json.loads(match.group(0))
     plan.setdefault("targetAllocation", [])

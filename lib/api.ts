@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getLanguage } from "./language";
 import type {
   ChatMessage,
   Decision,
@@ -33,6 +34,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "Accept-Language": getLanguage() === "en" ? "en" : "zh-CN",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },

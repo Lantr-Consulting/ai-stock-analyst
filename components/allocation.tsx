@@ -1,5 +1,8 @@
+"use client";
+
 import type { PortfolioSnapshot } from "@/lib/types";
 import { usd } from "@/lib/format";
+import { pick, useLanguage } from "@/lib/language";
 
 const SERIES = [
   "var(--series-1)",
@@ -10,12 +13,14 @@ const SERIES = [
 ];
 
 export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  const language = useLanguage();
+  const cashLabel = pick(language, "现金", "Cash");
   const rows = snapshot.positions.map((p) => ({
     label: p.symbol,
     name: p.name,
     value: p.shares * p.price,
   }));
-  rows.push({ label: "现金", name: "可用现金", value: snapshot.cash });
+  rows.push({ label: cashLabel, name: pick(language, "可用现金", "Available cash"), value: snapshot.cash });
   const total = rows.reduce((s, r) => s + r.value, 0);
 
   return (
@@ -24,7 +29,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
         className="flex h-4 w-full overflow-hidden rounded-full"
         style={{ gap: 2 }}
         role="img"
-        aria-label="投资组合配置"
+        aria-label={pick(language, "投资组合配置", "Portfolio allocation")}
       >
         {rows.map((r, i) => (
           <div
@@ -33,7 +38,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
             style={{
               width: `${(r.value / total) * 100}%`,
               background:
-                r.label === "现金" ? "var(--baseline)" : SERIES[i % SERIES.length],
+                r.label === cashLabel ? "var(--baseline)" : SERIES[i % SERIES.length],
             }}
           />
         ))}
@@ -46,7 +51,7 @@ export function Allocation({ snapshot }: { snapshot: PortfolioSnapshot }) {
               className="inline-block size-2.5 shrink-0 rounded-[3px]"
               style={{
                 background:
-                  r.label === "现金"
+                  r.label === cashLabel
                     ? "var(--baseline)"
                     : SERIES[i % SERIES.length],
               }}

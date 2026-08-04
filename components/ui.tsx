@@ -1,12 +1,17 @@
+"use client";
+
 import type { ReactNode } from "react";
 import type { DecisionStatus, SafeguardCheck } from "@/lib/types";
+import { pick, useLanguage } from "@/lib/language";
 
 export function SimulatedBanner() {
+  const language = useLanguage();
   return (
     <div className="flex items-center gap-2 border-b border-hairline bg-page px-5 py-1.5 text-[11px] text-ink-muted">
       <span aria-hidden className="inline-block size-2 rounded-full bg-warning" />
       <span>
-        <strong className="font-semibold text-ink">模拟交易</strong> — 当前账户只使用模拟资金，不涉及真实投资，也不构成投资建议。
+        <strong className="font-semibold text-ink">{pick(language, "模拟交易", "Paper trading")}</strong>{" "}
+        — {pick(language, "当前账户只使用模拟资金，不涉及真实投资，也不构成投资建议。", "This account uses simulated funds only. No real money is involved, and nothing here is investment advice.")}
       </span>
     </div>
   );
@@ -73,26 +78,28 @@ export function StatTile({
   );
 }
 
-const STATUS_STYLES: Record<DecisionStatus, { label: string; cls: string }> = {
-  proposed: { label: "等待确认", cls: "bg-accent/15 text-accent" },
-  approved: { label: "已同意", cls: "bg-good/10 text-delta-up dark:text-good" },
-  filled: { label: "已成交", cls: "bg-good/10 text-delta-up dark:text-good" },
-  rejected: { label: "已拒绝", cls: "bg-white/10 text-ink-2" },
-  blocked: { label: "未通过风控", cls: "bg-critical/10 text-critical" },
+const STATUS_STYLES: Record<DecisionStatus, { zh: string; en: string; cls: string }> = {
+  proposed: { zh: "等待确认", en: "Awaiting review", cls: "bg-accent/15 text-accent" },
+  approved: { zh: "已同意", en: "Approved", cls: "bg-good/10 text-delta-up dark:text-good" },
+  filled: { zh: "已成交", en: "Filled", cls: "bg-good/10 text-delta-up dark:text-good" },
+  rejected: { zh: "已拒绝", en: "Rejected", cls: "bg-white/10 text-ink-2" },
+  blocked: { zh: "未通过风控", en: "Blocked", cls: "bg-critical/10 text-critical" },
 };
 
 export function StatusBadge({ status }: { status: DecisionStatus }) {
+  const language = useLanguage();
   const s = STATUS_STYLES[status];
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${s.cls}`}
     >
-      {s.label}
+      {s[language]}
     </span>
   );
 }
 
 export function SafeguardList({ checks }: { checks: SafeguardCheck[] }) {
+  const language = useLanguage();
   if (checks.length === 0) return null;
   return (
     <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
@@ -110,7 +117,7 @@ export function SafeguardList({ checks }: { checks: SafeguardCheck[] }) {
             <span className="font-medium">{c.name}</span>
             <span className="text-ink-2"> — {c.detail}</span>
             <span className="sr-only">
-              {c.status === "pass" ? "（通过）" : "（未通过）"}
+              {c.status === "pass" ? pick(language, "（通过）", "(passed)") : pick(language, "（未通过）", "(failed)")}
             </span>
           </span>
         </li>

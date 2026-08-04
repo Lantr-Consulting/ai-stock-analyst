@@ -3,12 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import type { ValuePoint } from "@/lib/types";
 import { shortDate, usd } from "@/lib/format";
+import { pick, useLanguage } from "@/lib/language";
 
 const W = 720;
 const H = 220;
 const PAD = { top: 12, right: 12, bottom: 24, left: 52 };
 
 export function ValueChart({ points }: { points: ValuePoint[] }) {
+  const language = useLanguage();
   const ref = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<number | null>(null);
 
@@ -59,7 +61,7 @@ export function ValueChart({ points }: { points: ValuePoint[] }) {
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
         role="img"
-        aria-label="最近两个月的组合资产变化"
+        aria-label={pick(language, "最近两个月的组合资产变化", "Portfolio value over the last two months")}
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
       >

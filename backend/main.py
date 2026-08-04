@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import Depends, FastAPI, HTTPException  # noqa: E402
+from fastapi import Depends, FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from openai import OpenAI  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
@@ -88,6 +88,16 @@ def _keys_for(agent_row: dict[str, Any]) -> broker.Keys:
     if agent_row.get("alpaca_api_key") and agent_row.get("alpaca_secret_key"):
         return (agent_row["alpaca_api_key"], agent_row["alpaca_secret_key"])
     return None  # shared demo account from env
+
+
+def _request_language(request: Request) -> str:
+    return "en" if request.headers.get("accept-language", "").lower().startswith("en") else "zh"
+
+
+def _language_rule(language: str) -> str:
+    if language == "en":
+        return "Write every user-facing field in natural English; keep stock symbols and JSON keys unchanged."
+    return "Write every user-facing field in natural Simplified Chinese; keep stock symbols and JSON keys unchanged."
 
 
 @app.get("/")
@@ -227,7 +237,13 @@ def decisions(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
 _research_in_flight: set[str] = set()
 
 
-def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = None) -> None:
+def _do_research(
+    user: dict,
+    row: dict,
+    run_id: str,
+    automation: dict | None = None,
+    language: str = "zh",
+) -> None:
     keys = _keys_for(row)
     strategy = {**row["strategy"], "version": row["strategy_version"]}
     safeguards = {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})}
@@ -263,6 +279,7 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
             strategy, safeguards, keys, lessons[:12],
             mission=automation["prompt"] if automation else None,
             constraints=constraints,
+            language=language,
         )
         db.supersede_pending(user["id"])
         evidence = plan.get("evidence", [])
@@ -368,7 +385,7 @@ def _do_research(user: dict, row: dict, run_id: str, automation: dict | None = N
 
 
 @app.post("/research-cycle")
-def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
+def research_cycle(request: Request, user: dict = Depends(current_user)) -> dict[str, Any]:
     # DB-backed lock (works across workers): any run still 'running' and
     # younger than 15 minutes blocks a new one.
     from datetime import datetime, timedelta, timezone
@@ -385,7 +402,11 @@ def research_cycle(user: dict = Depends(current_user)) -> dict[str, Any]:
         raise HTTPException(status_code=409, detail="研究助手当前已暂停")
     run = db.create_run(user["id"])
     _research_in_flight.add(user["id"])
-    threading.Thread(target=_do_research, args=(user, row, run["id"]), daemon=True).start()
+    threading.Thread(
+        target=_do_research,
+        args=(user, row, run["id"], None, _request_language(request)),
+        daemon=True,
+    ).start()
     return {"runId": run["id"], "status": "running"}
 
 
@@ -595,7 +616,7 @@ def remove_automation(auto_id: str, user: dict = Depends(current_user)) -> dict[
     return {"ok": True}
 
 
-def _start_automation_run(user_id: str, email: str, auto: dict) -> bool:
+def _start_automation_run(user_id: str, email: str, auto: dict, language: str = "zh") -> bool:
     row = db.get_agent(user_id)
     if not row or not row["activated"] or row["paused"] or user_id in _research_in_flight:
         return False
@@ -604,17 +625,17 @@ def _start_automation_run(user_id: str, email: str, auto: dict) -> bool:
              json={"automation_id": auto["id"]})
     _research_in_flight.add(user_id)
     threading.Thread(target=_do_research,
-                     args=({"id": user_id, "email": email}, row, run["id"], auto),
+                     args=({"id": user_id, "email": email}, row, run["id"], auto, language),
                      daemon=True).start()
     return True
 
 
 @app.post("/automations/{auto_id}/run")
-def run_automation(auto_id: str, user: dict = Depends(current_user)) -> dict[str, Any]:
+def run_automation(auto_id: str, request: Request, user: dict = Depends(current_user)) -> dict[str, Any]:
     autos = [a for a in db.list_automations(user["id"]) if a["id"] == auto_id]
     if not autos:
         raise HTTPException(status_code=404, detail="没有找到这个定时任务")
-    if not _start_automation_run(user["id"], user["email"], autos[0]):
+    if not _start_automation_run(user["id"], user["email"], autos[0], _request_language(request)):
         raise HTTPException(status_code=409, detail="研究助手尚未启用、已暂停，或正在进行另一轮研究")
     db.update_automation(user["id"], auto_id, {"last_run_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()})
     return {"ok": True}
@@ -706,13 +727,18 @@ class InterpretRequest(BaseModel):
     instructions: str
 
 
-def _apply_instructions(user: dict[str, Any], row: dict[str, Any], instructions: str) -> dict[str, Any]:
+def _apply_instructions(
+    user: dict[str, Any],
+    row: dict[str, Any],
+    instructions: str,
+    language: str = "zh",
+) -> dict[str, Any]:
     current = {"profile": row["profile"], "strategy": row["strategy"]}
     completion = client.chat.completions.create(
         model=MODEL,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": INTERPRET_SYSTEM},
+            {"role": "system", "content": INTERPRET_SYSTEM + "\n" + _language_rule(language)},
             {
                 "role": "user",
                 "content": (
@@ -750,11 +776,16 @@ def _apply_instructions(user: dict[str, Any], row: dict[str, Any], instructions:
 
 @app.post("/interpret-profile")
 def interpret_profile(
-    req: InterpretRequest, user: dict = Depends(current_user)
+    req: InterpretRequest, request: Request, user: dict = Depends(current_user)
 ) -> dict[str, Any]:
     if not req.instructions.strip():
         raise HTTPException(status_code=400, detail="请先填写投资偏好")
-    return _apply_instructions(user, _agent_for(user), req.instructions.strip())
+    return _apply_instructions(
+        user,
+        _agent_for(user),
+        req.instructions.strip(),
+        _request_language(request),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -808,7 +839,15 @@ CHAT_TOOLS = [
 ]
 
 
-def _chat_tool(name: str, args: dict, keys, user=None, row=None, thread_id=None) -> str:
+def _chat_tool(
+    name: str,
+    args: dict,
+    keys,
+    user=None,
+    row=None,
+    thread_id=None,
+    language: str = "zh",
+) -> str:
     try:
         if name == "start_research":
             if user is None or row is None:
@@ -823,7 +862,7 @@ def _chat_tool(name: str, args: dict, keys, user=None, row=None, thread_id=None)
                 target=_do_research,
                 args=(user, row, run["id"],
                       {"title": "研究任务", "prompt": str(args.get("mission", ""))[:1500],
-                       "thread_id": thread_id}),
+                       "thread_id": thread_id}, language),
                 daemon=True,
             ).start()
             return json.dumps({"ok": True, "runId": run["id"],
@@ -857,11 +896,12 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]:
+def chat(req: ChatRequest, request: Request, user: dict = Depends(current_user)) -> dict[str, str]:
     if not req.messages:
         raise HTTPException(status_code=400, detail="消息不能为空")
     row = _agent_for(user)
     keys = _keys_for(row)
+    language = _request_language(request)
 
     def slim(r: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in r.items() if k != "evidence"} | {
@@ -885,7 +925,7 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
         for m in req.messages[-12:]
     ]
     msgs = [
-        {"role": "system", "content": CHAT_SYSTEM + json.dumps(context)},
+        {"role": "system", "content": CHAT_SYSTEM + json.dumps(context) + "\n\n" + _language_rule(language)},
         *history,
     ]
     text = ""
@@ -905,7 +945,7 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
                 except Exception:
                     targs = {}
                 msgs.append({"role": "tool", "tool_call_id": t.id,
-                             "content": _chat_tool(t.function.name, targs, keys, user, row, thread_id)})
+                             "content": _chat_tool(t.function.name, targs, keys, user, row, thread_id, language)})
             continue
         text = msg.content or ""
         break
@@ -915,7 +955,7 @@ def chat(req: ChatRequest, user: dict = Depends(current_user)) -> dict[str, str]
         text = text.rsplit("UPDATE_STRATEGY:", 1)[0].strip()
         if instruction and row["activated"]:
             try:
-                _apply_instructions(user, row, instruction)
+                _apply_instructions(user, row, instruction, language)
                 strategy_updated = True
                 text += "\n\n（我已根据这项要求更新你的研究策略。）"
             except Exception:
