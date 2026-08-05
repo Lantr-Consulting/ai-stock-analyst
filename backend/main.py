@@ -163,11 +163,12 @@ def _demo_portfolio() -> dict[str, Any]:
     ]
     return {
         "asOf": now.isoformat(),
-        "cash": 24125.50,
+        "cash": 24125.60,
         "equity": 107640.00,
+        "positionsMarketValue": 83514.40,
         "openOrders": [],
         "positions": [
-            {"symbol": "VOO", "name": "Vanguard S&P 500 ETF", "shares": 70, "costBasis": 512.10, "price": 538.42, "unrealizedPl": 1842.40, "unrealizedPlPct": 5.14, "todayPct": 0.32},
+            {"symbol": "VOO", "name": "Vanguard S&P 500 ETF", "shares": 70, "costBasis": 512.10, "price": 570.21, "unrealizedPl": 4067.70, "unrealizedPlPct": 11.35, "todayPct": 0.32},
             {"symbol": "MSFT", "name": "Microsoft", "shares": 40, "costBasis": 448.30, "price": 471.18, "unrealizedPl": 915.20, "unrealizedPlPct": 5.10, "todayPct": -0.18},
             {"symbol": "NVDA", "name": "NVIDIA", "shares": 100, "costBasis": 129.75, "price": 142.60, "unrealizedPl": 1285.00, "unrealizedPlPct": 9.90, "todayPct": 1.24},
             {"symbol": "AMZN", "name": "Amazon", "shares": 50, "costBasis": 196.40, "price": 209.85, "unrealizedPl": 672.50, "unrealizedPlPct": 6.85, "todayPct": 0.41},
@@ -960,6 +961,11 @@ safeguard results). When asked why something happened, cite the recorded \
 decision — do not invent trades, prices, news, or reasons that are not in \
 the records. If the records don't contain the answer, say so plainly.
 
+The portfolio's `equity` is the total account value and already includes \
+`cash`; never add cash to equity again. When `demoMode` is true, portfolio \
+prices are authoritative simulated account marks. Do not replace them with \
+live quotes unless the user explicitly asks for a current market quote.
+
 Speak like a seasoned buy-side analyst: direct, opinionated where the data \
 supports it, plain language. There is NO symbol restriction of any kind — \
 the strategy's "universe" field is merely the user's watchlist. NEVER use \
@@ -1071,6 +1077,7 @@ def chat(req: ChatRequest, request: Request, user: dict = Depends(current_user))
         }
 
     context = {
+        "demoMode": demo.is_demo_user(user),
         "profile": row["profile"],
         "strategy": row["strategy"],
         "portfolio": _demo_portfolio() if demo.is_demo_user(user) else broker.account_snapshot(keys),
