@@ -186,7 +186,7 @@ def run_research_cycle(
             "language_rule": (
                 "Write every user-facing value in natural English."
                 if language == "en"
-                else "Write every user-facing value in natural Simplified Chinese."
+                else "Write every user-facing value in idiomatic Simplified Chinese as a native Chinese financial product would; avoid literal English translation patterns."
             ),
         }
     )

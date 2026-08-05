@@ -191,7 +191,7 @@ def _request_language(request: Request) -> str:
 def _language_rule(language: str) -> str:
     if language == "en":
         return "Write every user-facing field in natural English; keep stock symbols and JSON keys unchanged."
-    return "Write every user-facing field in natural Simplified Chinese; keep stock symbols and JSON keys unchanged."
+    return "Write every user-facing field in idiomatic Simplified Chinese as a native Chinese financial product would; avoid literal English translation patterns, and keep stock symbols and JSON keys unchanged."
 
 
 @app.get("/")
@@ -842,7 +842,7 @@ INTERPRET_SYSTEM = """You are the strategy engine of a personal AI stock analyst
 for a beginner investor using a simulated paper-trading account.
 
 You receive the user's CURRENT investor profile and strategy as JSON, plus NEW \
-plain-English instructions. Merge the new instructions into the profile and \
+instructions in the user's language. Merge the new instructions into the profile and \
 strategy. Keep everything that still applies; change only what the new \
 instructions affect; never invent preferences the user did not state.
 
@@ -854,12 +854,10 @@ user cares about most. It never limits anything — the agent researches the \
 whole US market. Never write rules mentioning a "universe" or restricting \
 research/trading to any list.
 - riskTolerance is exactly one of: "conservative", "moderate", "aggressive".
-- Rules must be concrete and checkable, and must always include an approval \
-rule ("Propose, don't execute — every order needs approval") unless the user \
-explicitly asked for autonomous mode.
-- Write every user-facing field in natural Simplified Chinese. Keep stock
-  symbols and the riskTolerance enum unchanged. Avoid translated English
-  phrasing; write as a native Chinese financial product would.
+- Rules must be concrete and checkable, and must always include a rule meaning \
+that every order requires approval unless the user explicitly asked for autonomous mode.
+- Follow the per-request language instruction appended below for every \
+user-facing field. Keep stock symbols and the riskTolerance enum unchanged.
 - Write for a smart beginner: plain language, no jargon.
 
 Respond with JSON only, exactly this shape:
@@ -982,9 +980,9 @@ Style: warm, concise, plain language for a smart beginner. A few sentences, \
 not essays. Never give advice about real-money investing; if asked, remind \
 the user this is a simulated learning account.
 
-Always answer in natural Simplified Chinese, even when the source data or the
-user's message is in English. Keep stock symbols unchanged. Translate and
-summarize English news instead of repeating it verbatim.
+Follow the final per-request language instruction for every answer. Keep stock
+symbols unchanged. Translate and summarize source-language news when needed
+instead of repeating it verbatim.
 
 ACCOUNT STATE:
 """
