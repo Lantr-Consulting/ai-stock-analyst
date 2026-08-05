@@ -1,4 +1,5 @@
 import { TopBar } from "@/components/topbar";
+import { DemoBanner } from "@/components/demo-banner";
 
 /* The product shell — one compact navigation bar around every app screen.
    The marketing landing at "/" renders outside this group, bare. */
@@ -10,6 +11,7 @@ export default function AppLayout({
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
       <TopBar />
+      <DemoBanner />
       <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col overflow-y-auto px-5 py-8 sm:px-6 lg:px-8">
         {children}
       </main>

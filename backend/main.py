@@ -13,6 +13,7 @@ import json
 import os
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 from dotenv import load_dotenv
@@ -27,6 +28,7 @@ from pydantic import BaseModel  # noqa: E402
 import agent as research_agent  # noqa: E402
 import broker  # noqa: E402
 import db  # noqa: E402
+import demo  # noqa: E402
 import risk  # noqa: E402
 from auth import current_user  # noqa: E402
 
@@ -72,6 +74,33 @@ DEFAULT_STRATEGY = {
     "universe": ["AAPL", "MSFT", "NVDA", "AMZN", "AVGO", "VOO", "QQQ"],
 }
 
+DEFAULT_PROFILE_EN = {
+    "goals": "Build a durable long-term portfolio while learning how markets work",
+    "riskTolerance": "moderate",
+    "timeHorizon": "3 to 5 years",
+    "preferredSectors": ["Technology", "AI infrastructure", "Broad-market ETFs"],
+    "avoid": ["Penny stocks", "Options, margin, and crypto"],
+    "marketViews": ["Demand for AI infrastructure should continue to grow"],
+    "tradingFrequency": "No more than two new trades per week",
+}
+
+DEFAULT_STRATEGY_EN = {
+    "summary": "Use a broad-market ETF as the core, add measured exposure to profitable technology and AI infrastructure companies, and preserve a cash buffer.",
+    "watching": [
+        "Earnings and guidance from AI infrastructure companies (NVDA, MSFT, AVGO)",
+        "Performance against the VOO benchmark",
+        "News that changes the thesis for an existing holding",
+    ],
+    "rules": [
+        "Keep 30% to 50% in VOO as the portfolio anchor",
+        "Keep each individual technology stock below 15%",
+        "Require at least two independent pieces of evidence before proposing a buy",
+        "Keep at least 10% in cash",
+        "Propose, never auto-execute; every simulated order needs approval",
+    ],
+    "universe": ["AAPL", "MSFT", "NVDA", "AMZN", "AVGO", "VOO", "QQQ"],
+}
+
 
 EMPTY_PROFILE: dict[str, Any] = {}
 EMPTY_STRATEGY = {"summary": "", "watching": [], "rules": [], "universe": []}
@@ -81,7 +110,72 @@ def _agent_for(user: dict[str, Any]) -> dict[str, Any]:
     # New agents start EMPTY and inactive: the user describes how they invest,
     # reviews the interpreted strategy, universe, and safeguards, then
     # explicitly activates. No defaults they didn't bless.
-    return db.ensure_agent(user["id"], user["email"], EMPTY_PROFILE, EMPTY_STRATEGY)
+    if not demo.is_demo_user(user):
+        return db.ensure_agent(user["id"], user["email"], EMPTY_PROFILE, EMPTY_STRATEGY)
+
+    english = demo.language_for(user) == "en"
+    row = db.ensure_agent(
+        user["id"],
+        user["email"],
+        DEFAULT_PROFILE_EN if english else DEFAULT_PROFILE,
+        DEFAULT_STRATEGY_EN if english else DEFAULT_STRATEGY,
+    )
+    if not row["activated"]:
+        row = db.update_agent(user["id"], {"activated": True})
+    if not db.list_decisions(user["id"], limit=1):
+        now = account_ts()
+        db.add_decision(user["id"], {
+            "action": "hold",
+            "rationale": (
+                "The portfolio remains close to its target allocation. The next useful step is to compare current AI-infrastructure valuations before adding risk."
+                if english else
+                "当前持仓与目标配置相差不大。下一步更值得做的是比较 AI 基础设施公司的估值，再决定是否增加风险。"
+            ),
+            "strategyVersion": row["strategy_version"],
+            "evidence": [{
+                "source": "Demo portfolio review" if english else "演示组合复盘",
+                "timestamp": now,
+                "summary": "No order was needed; the cash buffer and position limits remain intact." if english else "本轮无需下单，现金缓冲和仓位限制都保持正常。",
+            }],
+            "safeguards": [],
+            "status": "approved",
+        })
+    if not db.list_automations(user["id"]):
+        seeded = db.create_automation(
+            user["id"],
+            "Weekly portfolio review" if english else "每周持仓复盘",
+            "Review the portfolio, recent market changes, and the strongest evidence for or against adjusting a position."
+            if english else
+            "复盘当前持仓和近期市场变化，说明是否有充分依据调整仓位。",
+            "weekly",
+            13,
+        )
+        db.update_automation(user["id"], seeded["id"], {"enabled": False})
+    return row
+
+
+def _demo_portfolio() -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    points = [
+        {"date": (now - timedelta(days=42 - i * 3)).date().isoformat(), "value": value}
+        for i, value in enumerate([100000, 100620, 99880, 101240, 102150, 101730, 103080,
+                                   102760, 104110, 104880, 104420, 105760, 106340, 107180, 107640])
+    ]
+    return {
+        "asOf": now.isoformat(),
+        "cash": 24125.50,
+        "equity": 107640.00,
+        "openOrders": [],
+        "positions": [
+            {"symbol": "VOO", "name": "Vanguard S&P 500 ETF", "shares": 70, "costBasis": 512.10, "price": 538.42, "unrealizedPl": 1842.40, "unrealizedPlPct": 5.14, "todayPct": 0.32},
+            {"symbol": "MSFT", "name": "Microsoft", "shares": 40, "costBasis": 448.30, "price": 471.18, "unrealizedPl": 915.20, "unrealizedPlPct": 5.10, "todayPct": -0.18},
+            {"symbol": "NVDA", "name": "NVIDIA", "shares": 100, "costBasis": 129.75, "price": 142.60, "unrealizedPl": 1285.00, "unrealizedPlPct": 9.90, "todayPct": 1.24},
+            {"symbol": "AMZN", "name": "Amazon", "shares": 50, "costBasis": 196.40, "price": 209.85, "unrealizedPl": 672.50, "unrealizedPlPct": 6.85, "todayPct": 0.41},
+        ],
+        "history": points,
+        "sharedDemoAccount": False,
+        "privateDemo": True,
+    }
 
 
 def _keys_for(agent_row: dict[str, Any]) -> broker.Keys:
@@ -105,6 +199,31 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "ai-stock-analyst-backend"}
 
 
+class DemoSessionRequest(BaseModel):
+    language: Literal["zh", "en"] = "zh"
+    code: str | None = None
+
+
+@app.get("/demo/config")
+def demo_config() -> dict[str, Any]:
+    return demo.config()
+
+
+@app.post("/demo/session")
+def demo_session(req: DemoSessionRequest, request: Request) -> dict[str, Any]:
+    return demo.create_session(request, language=req.language, code=req.code)
+
+
+@app.get("/demo/status")
+def demo_status(user: dict = Depends(current_user)) -> dict[str, Any]:
+    return demo.status(user)
+
+
+@app.post("/demo/reset")
+def demo_reset(request: Request, user: dict = Depends(current_user)) -> dict[str, Any]:
+    return demo.reset_session(request, user)
+
+
 # ---------------------------------------------------------------------------
 # Me: the signed-in user's agent
 # ---------------------------------------------------------------------------
@@ -123,6 +242,7 @@ def me(user: dict = Depends(current_user)) -> dict[str, Any]:
         "paused": row["paused"],
         "activated": row["activated"],
         "safeguards": {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})},
+        "demo": demo.status(user) if demo.is_demo_user(user) else {"isDemo": False},
     }
 
 
@@ -186,6 +306,8 @@ class AlpacaKeysRequest(BaseModel):
 def set_alpaca_keys(
     req: AlpacaKeysRequest, user: dict = Depends(current_user)
 ) -> dict[str, Any]:
+    if demo.is_demo_user(user):
+        raise HTTPException(status_code=403, detail="临时演示不会连接外部券商账户")
     _agent_for(user)
     keys = (req.apiKey.strip(), req.secretKey.strip())
     if not broker.keys_valid(keys):
@@ -203,6 +325,9 @@ def set_alpaca_keys(
 
 @app.get("/portfolio")
 def portfolio(user: dict = Depends(current_user)) -> dict[str, Any]:
+    if demo.is_demo_user(user):
+        _agent_for(user)
+        return _demo_portfolio()
     keys = _keys_for(_agent_for(user))
     snapshot = broker.account_snapshot(keys)
     snapshot["history"] = broker.value_history(keys)
@@ -221,6 +346,8 @@ TERMINAL_ORDER_STATUSES = {"filled", "canceled", "expired", "rejected"}
 def decisions(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
     keys = _keys_for(_agent_for(user))
     records = db.list_decisions(user["id"])
+    if demo.is_demo_user(user):
+        return records
     for r in records:
         order = r.get("order")
         if order and order.get("status") not in TERMINAL_ORDER_STATUSES:
@@ -257,8 +384,13 @@ def _do_research(
                 lessons.append(f'用户拒绝了 {r["action"]} {r["qty"]} 股 {r["symbol"]}{why}')
             elif r.get("symbol") and r["status"] in ("approved", "filled"):
                 lessons.append(f'用户确认了 {r["action"]} {r["qty"]} 股 {r["symbol"]}')
-        pre = broker.account_snapshot(keys)
-        trades_used = broker.orders_submitted_today(keys)
+        private_demo = demo.is_demo_user(user)
+        pre = _demo_portfolio() if private_demo else broker.account_snapshot(keys)
+        trades_used = (
+            sum(1 for item in db.list_decisions(user["id"], limit=100)
+                if item["status"] in ("approved", "filled") and item.get("symbol"))
+            if private_demo else broker.orders_submitted_today(keys)
+        )
         trades_left = max(0, int(safeguards["maxTradesPerDay"]) - trades_used)
         max_order = safeguards["maxOrderPct"] / 100 * pre["equity"]
         open_syms = sorted({o["symbol"] for o in pre.get("openOrders", [])})
@@ -280,6 +412,7 @@ def _do_research(
             mission=automation["prompt"] if automation else None,
             constraints=constraints,
             language=language,
+            portfolio_override=pre if private_demo else None,
         )
         db.supersede_pending(user["id"])
         evidence = plan.get("evidence", [])
@@ -292,8 +425,8 @@ def _do_research(
             "rationale": rationale or "当前组合已经符合目标配置。",
             "strategyVersion": row["strategy_version"], "evidence": plan_evidence,
             "safeguards": [], "status": "approved", "runId": run_id})
-        account = broker.account_snapshot(keys)
-        trades_today = broker.orders_submitted_today(keys)
+        account = _demo_portfolio() if private_demo else broker.account_snapshot(keys)
+        trades_today = trades_used if private_demo else broker.orders_submitted_today(keys)
         pending = db.pending_symbols(user["id"]) | {
             o["symbol"] for o in account.get("openOrders", [])
         }
@@ -400,6 +533,7 @@ def research_cycle(request: Request, user: dict = Depends(current_user)) -> dict
         raise HTTPException(status_code=409, detail="请先完成投资偏好设置并启用研究助手")
     if row["paused"]:
         raise HTTPException(status_code=409, detail="研究助手当前已暂停")
+    demo.consume_ai_action(user)
     run = db.create_run(user["id"])
     _research_in_flight.add(user["id"])
     threading.Thread(
@@ -460,7 +594,8 @@ def approve(decision_id: str, req: ApproveRequest = None, user: dict = Depends(c
         record["qty"] = req.qty
 
     price = broker.latest_prices([record["symbol"]], keys).get(record["symbol"])
-    account = broker.account_snapshot(keys)
+    private_demo = demo.is_demo_user(user)
+    account = _demo_portfolio() if private_demo else broker.account_snapshot(keys)
     safeguards = {**risk.DEFAULT_SAFEGUARDS, **(row.get("safeguards") or {})}
     checks = risk.run_safeguards(
         action=record["action"],
@@ -469,7 +604,11 @@ def approve(decision_id: str, req: ApproveRequest = None, user: dict = Depends(c
         price=price or 0,
         account=account,
         safeguards=safeguards,
-        trades_today=broker.orders_submitted_today(keys),
+        trades_today=(
+            sum(1 for item in db.list_decisions(user["id"], limit=100)
+                if item["status"] in ("approved", "filled") and item.get("symbol"))
+            if private_demo else broker.orders_submitted_today(keys)
+        ),
         pending_symbols=(db.pending_symbols(user["id"]) - {record["symbol"]})
         | {o["symbol"] for o in account.get("openOrders", [])},
         asset_check=broker.asset_ok(record["symbol"], keys),
@@ -482,6 +621,20 @@ def approve(decision_id: str, req: ApproveRequest = None, user: dict = Depends(c
     db.update_decision(user["id"], decision_id,
                        {"qty": record["qty"],
                         "estValue": round(record["qty"] * (price or 0), 2)})
+    if private_demo:
+        order = {
+            "id": f"demo-{decision_id}",
+            "submittedAt": account_ts(),
+            "status": "filled",
+            "filledAt": account_ts(),
+            "fillPrice": price,
+            "simulated": True,
+        }
+        return db.update_decision(
+            user["id"], decision_id,
+            {"status": "filled", "order": order, "safeguards": checks},
+        )
+
     order = broker.submit_market_order(record["symbol"], record["qty"], record["action"], keys)
     for _ in range(3):
         if order["status"] in TERMINAL_ORDER_STATUSES:
@@ -591,8 +744,11 @@ def create_automation(req: AutomationRequest, user: dict = Depends(current_user)
         raise HTTPException(status_code=400, detail="不支持这个运行频率")
     if not req.title.strip() or not req.prompt.strip():
         raise HTTPException(status_code=400, detail="请填写任务名称和具体要求")
-    return db.create_automation(user["id"], req.title.strip(), req.prompt.strip(),
-                                req.cadence, max(0, min(23, req.hourUtc)))
+    row = db.create_automation(user["id"], req.title.strip(), req.prompt.strip(),
+                               req.cadence, max(0, min(23, req.hourUtc)))
+    if demo.is_demo_user(user):
+        row = db.update_automation(user["id"], row["id"], {"enabled": False})
+    return row
 
 
 class AutomationPatch(BaseModel):
@@ -603,7 +759,7 @@ class AutomationPatch(BaseModel):
 def patch_automation(auto_id: str, req: AutomationPatch, user: dict = Depends(current_user)) -> dict[str, Any]:
     fields = {}
     if req.enabled is not None:
-        fields["enabled"] = req.enabled
+        fields["enabled"] = False if demo.is_demo_user(user) else req.enabled
     updated = db.update_automation(user["id"], auto_id, fields)
     if not updated:
         raise HTTPException(status_code=404, detail="没有找到这个定时任务")
@@ -635,6 +791,7 @@ def run_automation(auto_id: str, request: Request, user: dict = Depends(current_
     autos = [a for a in db.list_automations(user["id"]) if a["id"] == auto_id]
     if not autos:
         raise HTTPException(status_code=404, detail="没有找到这个定时任务")
+    demo.consume_ai_action(user)
     if not _start_automation_run(user["id"], user["email"], autos[0], _request_language(request)):
         raise HTTPException(status_code=409, detail="研究助手尚未启用、已暂停，或正在进行另一轮研究")
     db.update_automation(user["id"], auto_id, {"last_run_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()})
@@ -665,6 +822,8 @@ def _scheduler_loop() -> None:
         try:
             now = _dt.now(_tz.utc)
             for auto in db.list_automations():
+                if demo.is_demo_user_id(auto["user_id"]):
+                    continue
                 if _automation_due(auto, now) and db.claim_automation(auto):
                     _start_automation_run(auto["user_id"], "", auto)
         except Exception:
@@ -780,6 +939,7 @@ def interpret_profile(
 ) -> dict[str, Any]:
     if not req.instructions.strip():
         raise HTTPException(status_code=400, detail="请先填写投资偏好")
+    demo.consume_ai_action(user)
     return _apply_instructions(
         user,
         _agent_for(user),
@@ -856,6 +1016,7 @@ def _chat_tool(
                 return json.dumps({"error": "研究助手尚未启用或已暂停，请先启用或恢复"})
             if user["id"] in _research_in_flight:
                 return json.dumps({"error": "已有一轮研究正在进行"})
+            demo.consume_ai_action(user)
             run = db.create_run(user["id"])
             _research_in_flight.add(user["id"])
             threading.Thread(
@@ -881,6 +1042,8 @@ def _chat_tool(
         if name == "get_recent_news":
             return json.dumps(broker.recent_news([x.strip().upper() for x in str(args["symbols"]).split(",")], 8, keys))
         return json.dumps({"error": "无法识别这项操作"}, ensure_ascii=False)
+    except HTTPException as exc:
+        return json.dumps({"error": exc.detail}, ensure_ascii=False)
     except Exception:
         return json.dumps({"error": "操作暂时失败，请稍后重试"}, ensure_ascii=False)
 
@@ -896,9 +1059,10 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-def chat(req: ChatRequest, request: Request, user: dict = Depends(current_user)) -> dict[str, str]:
+def chat(req: ChatRequest, request: Request, user: dict = Depends(current_user)) -> dict[str, Any]:
     if not req.messages:
         raise HTTPException(status_code=400, detail="消息不能为空")
+    demo.consume_ai_action(user)
     row = _agent_for(user)
     keys = _keys_for(row)
     language = _request_language(request)
@@ -911,7 +1075,7 @@ def chat(req: ChatRequest, request: Request, user: dict = Depends(current_user))
     context = {
         "profile": row["profile"],
         "strategy": row["strategy"],
-        "portfolio": broker.account_snapshot(keys),
+        "portfolio": _demo_portfolio() if demo.is_demo_user(user) else broker.account_snapshot(keys),
         "decisions": [slim(r) for r in db.list_decisions(user["id"], limit=10)],
     }
 

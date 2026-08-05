@@ -21,7 +21,7 @@ const COPY = {
     nav: { features: "Features", how: "How it works", who: "Who it's for" },
     hub: "Student showcase",
     signIn: "Sign in",
-    openApp: "Open the demo",
+    openApp: "Try the demo",
     openDash: "Open your dashboard",
     badge: "Past Lantr student project · Hosted demo · Paper trading",
     h1: "A personal AI analyst that manages your portfolio.",
@@ -29,8 +29,8 @@ const COPY = {
     subEm: "It does the analyst's work",
     subRest:
       " — researching the live market, proposing trades inside your safeguards, and executing only what you approve, on a $100k paper-trading account.",
-    ctaPrimary: "Explore the live demo",
-    ctaSecondary: "Create a free account",
+    ctaPrimary: "Start a private demo",
+    ctaSecondary: "Sign in",
     trust: [
       "Paper trading only — no real money",
       "A deterministic risk engine checks every order",
@@ -70,8 +70,8 @@ const COPY = {
     howTitle: "Four steps, one loop.",
     how: [
       {
-        t: "Create an account",
-        b: "You get a fresh $100k Alpaca paper-trading account and a blank analyst.",
+        t: "Open your private demo",
+        b: "A seeded $100k paper portfolio opens instantly—no signup or shared credentials.",
       },
       {
         t: "Interview your analyst",
@@ -110,7 +110,7 @@ const COPY = {
       },
     ],
     ctaTitle: "Try it with simulated money. Keep the lessons.",
-    ctaBody: "Sign in once and you're signed in across every Lantr demo.",
+    ctaBody: "No signup. Your changes stay private and clear automatically after 24 hours.",
     footerDisclaimer:
       "A past Lantr student project, hosted by Lantr for demonstration. Simulated paper trading only. No real money. Not financial advice.",
     footerLinks: "More from Lantr",
@@ -119,7 +119,7 @@ const COPY = {
     nav: { features: "主要功能", how: "使用流程", who: "作品方向" },
     hub: "往届作品",
     signIn: "登录",
-    openApp: "体验作品",
+    openApp: "互动体验",
     openDash: "打开投资工作台",
     badge: "Lantr 往届学生作品 · 模拟交易，不涉及真实资金",
     h1: "让 AI 帮你研究市场，买不买仍由你决定。",
@@ -127,8 +127,8 @@ const COPY = {
     subEm: "它会按你的偏好查看实时行情",
     subRest:
       "、整理交易建议。每一笔订单都会先经过风控规则检查，只有你确认后才会进入模拟账户。",
-    ctaPrimary: "开始体验",
-    ctaSecondary: "注册体验账户",
+    ctaPrimary: "开始专属演示",
+    ctaSecondary: "登录账户",
     trust: [
       "全程使用模拟资金",
       "每笔订单都先检查风险",
@@ -167,8 +167,8 @@ const COPY = {
     howTitle: "从说明偏好到模拟下单，只需四步。",
     how: [
       {
-        t: "注册账户",
-        b: "系统会准备一个 10 万美元的模拟账户，供你放心体验。",
+        t: "直接进入专属演示",
+        b: "无需注册，系统会立即准备一份互不干扰的 10 万美元模拟投资组合。",
       },
       {
         t: "说清楚投资偏好",
@@ -207,7 +207,7 @@ const COPY = {
       },
     ],
     ctaTitle: "用模拟资金，亲手走一遍完整流程。",
-    ctaBody: "使用同一个体验账户，也可以继续查看另外两件往届学生作品。",
+    ctaBody: "无需注册，所有修改只有你能看到，并会在 24 小时后自动清除。",
     footerDisclaimer:
       "Lantr 往届学生作品，由 Lantr 继续托管。全程使用模拟资金，不涉及真实交易，也不构成投资建议。",
     footerLinks: "更多学生作品",
@@ -424,7 +424,7 @@ export default function Landing() {
                 >
                   {c.signIn}
                 </Link>
-                <Link href="/dashboard" className="lp-btn h-9 px-4 text-[13px]">
+                <Link href="/demo" className="lp-btn h-9 px-4 text-[13px]">
                   {c.openApp}
                 </Link>
               </>
@@ -456,7 +456,7 @@ export default function Landing() {
             </Reveal>
             <Reveal delay={280}>
               <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row">
-                <Link href="/dashboard" className="lp-btn h-12 px-6 text-[15px]">
+                <Link href="/demo" className="lp-btn h-12 px-6 text-[15px]">
                   {c.ctaPrimary} →
                 </Link>
                 <Link href="/signin" className="lp-btn-ghost h-12 px-6 text-[15px]">
@@ -636,7 +636,7 @@ export default function Landing() {
             </Reveal>
             <Reveal delay={140}>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link href="/dashboard" className="lp-btn h-12 px-6 text-[15px]">
+                <Link href="/demo" className="lp-btn h-12 px-6 text-[15px]">
                   {c.ctaPrimary} →
                 </Link>
                 <Link

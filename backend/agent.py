@@ -76,12 +76,12 @@ When done researching, respond with ONLY a JSON object, no prose:
   "rationale": "<3-5 sentences: the portfolio thesis and how the basket moves toward target>"}}"""
 
 
-def _tools(keys: broker.Keys = None) -> list[Any]:
+def _tools(keys: broker.Keys = None, portfolio_override: dict[str, Any] | None = None) -> list[Any]:
     @tool
     def get_portfolio() -> str:
         """Current paper account: cash, equity, and open positions."""
         try:
-            return json.dumps(broker.account_snapshot(keys))
+            return json.dumps(portfolio_override or broker.account_snapshot(keys))
         except Exception:
             return json.dumps({"error": "行情查询暂时失败，请稍后重试"}, ensure_ascii=False)
 
@@ -157,6 +157,7 @@ def run_research_cycle(
     mission: str | None = None,
     constraints: str | None = None,
     language: str = "zh",
+    portfolio_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Returns {action, symbol, qty, rationale, evidence:[...]}."""
     prompt = ChatPromptTemplate.from_messages(
@@ -166,7 +167,7 @@ def run_research_cycle(
             ("placeholder", "{agent_scratchpad}"),
         ]
     )
-    tools = _tools(keys)
+    tools = _tools(keys, portfolio_override)
     executor = AgentExecutor(
         agent=create_tool_calling_agent(_llm(), tools, prompt),
         tools=tools,
