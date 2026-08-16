@@ -24,92 +24,92 @@ const COPY = {
     openApp: "Try the demo",
     openDash: "Open your dashboard",
     badge: "Past Lantr student project · Hosted demo · Paper trading",
-    h1: "A personal AI analyst that manages your portfolio.",
-    subLead: "Describe how you invest in plain English. ",
-    subEm: "It does the analyst's work",
+    h1: "Put an AI analyst to work on a $100k paper portfolio.",
+    subLead: "Describe the kind of investor you are. ",
+    subEm: "The analyst checks the live market",
     subRest:
-      " — researching the live market, proposing trades inside your safeguards, and executing only what you approve, on a $100k paper-trading account.",
+      ", prepares trade ideas within your risk limits, and waits for your approval before placing anything in the paper account.",
     ctaPrimary: "Start a private demo",
     ctaSecondary: "Sign in",
     trust: [
       "Paper trading only — no real money",
-      "A deterministic risk engine checks every order",
+      "A rules-based risk check reviews every order",
       "Nothing executes without your approval",
     ],
     frameCaption:
-      "The product: a dark, Robinhood-style workspace on real market data.",
+      "The student’s finished workspace, running on live market data.",
     featuresKicker: "What it does",
-    featuresTitle: "An analyst, not an autocomplete.",
+    featuresTitle: "What your analyst handles",
     features: [
       {
-        t: "A strategy in your own words",
-        b: "Tell it “cautious tech investor, prefers dividends, no meme stocks.” The agent turns that into a working investor profile it actually follows — and updates it when you change your mind in chat.",
+        t: "Start with your investing style",
+        b: "You might say, “cautious tech investor, prefers dividends, avoids meme stocks.” The analyst turns that into a profile with clear preferences and updates it whenever your views change.",
       },
       {
         t: "Research on live markets",
-        b: "It screens real movers, reads indicators — SMA, RSI, volatility, drawdown — and news, then returns a target allocation and up to five sized orders with reasoning you can interrogate.",
+        b: "It screens market movers, reads news and indicators such as SMA, RSI, volatility, and drawdown, then prepares a target allocation and up to five proposed orders with an explanation for each one.",
       },
       {
-        t: "Code decides, the model narrates",
-        b: "Position caps, order limits, cash floors, penny-stock filters — enforced by a deterministic risk engine, not by the LLM. A proposal that breaks your limits never reaches you.",
+        t: "Risk limits checked in code",
+        b: "Position caps, order limits, cash floors, and penny-stock filters are regular software rules. Any proposal that falls outside your limits is stopped before it reaches the order screen.",
       },
       {
-        t: "You hold the trigger",
-        b: "Every order arrives as a ticket: approve it, resize it, or reject it with a reason. Your verdicts become lessons the analyst reads before its next research cycle.",
+        t: "You decide on every order",
+        b: "Each idea arrives as an order ticket. You can approve it, change the size, or reject it and explain why. The analyst uses that feedback during the next round of research.",
       },
       {
-        t: "Missions that run without you",
-        b: "Standing automations on a schedule — a morning scan, a weekly portfolio review, a sector deep-dive. Reports land in your workspace, ready when you are.",
+        t: "Research that runs on schedule",
+        b: "Set a morning scan, a weekly portfolio review, or a sector deep dive. The report will be waiting in your workspace when the scheduled run finishes.",
       },
       {
-        t: "A market you can wander",
-        b: "A live Discover tab: top movers with sparklines, your holdings and watchlist, and a full ticker page for any US stock — one tap sends it to your analyst.",
+        t: "A market you can explore",
+        b: "The Discover tab brings together top movers, charts, holdings, and your watchlist. Open any US ticker to see the detail or send it to the analyst for a closer look.",
       },
     ],
     howKicker: "How it works",
-    howTitle: "Four steps, one loop.",
+    howTitle: "Set your preferences, then review each idea.",
     how: [
       {
         t: "Open your private demo",
-        b: "A seeded $100k paper portfolio opens instantly—no signup or shared credentials.",
+        b: "A private $100k paper portfolio opens instantly, with sample holdings ready to explore.",
       },
       {
-        t: "Interview your analyst",
-        b: "Describe yourself in chat. It drafts your investor profile and safeguards; nothing activates until you approve.",
+        t: "Describe how you invest",
+        b: "Share your goals and limits in chat. The analyst drafts an investor profile for you to review before it becomes active.",
       },
       {
         t: "It researches and proposes",
-        b: "On demand or on schedule, it studies the market and files safeguard-checked trade proposals.",
+        b: "Run research whenever you like or put it on a schedule. Every trade idea passes the same risk checks.",
       },
       {
-        t: "You approve, it learns",
-        b: "Approved orders go to the paper account; rejections become lessons. The loop repeats, a little smarter each time.",
+        t: "Review the order and leave feedback",
+        b: "Approved orders go to the paper account. If you reject one, your reason becomes useful context for the next report.",
       },
     ],
     hoodKicker: "How the student built it",
-    hoodTitle: "From a class idea to a live product.",
+    hoodTitle: "The product grew one feature at a time.",
     hoodBody:
-      "This project was completed by a past Lantr student. The student shipped a small first version, then added the agent, live market tools, risk checks, accounts, and automation one working milestone at a time. Lantr now hosts the finished work for visitors to explore.",
+      "A past Lantr student began with a simple portfolio screen and released an early version. Live market tools, AI research, risk checks, user accounts, and scheduled reports came next. Lantr now hosts the finished project for visitors to explore.",
     hoodLink: "Read the source on GitHub",
     whoKicker: "The student's direction",
-    whoTitle: "A finance-and-AI project, taken all the way to launch.",
+    whoTitle: "Built from one student’s interest in finance and AI.",
     whoBody:
-      "The student chose a question at the intersection of markets, software, and human control—and turned it into working software rather than a presentation.",
+      "The student wanted to understand how market research, software, and investor judgment could work together. Building the product meant making each part work in a real interface.",
     who: [
       {
         t: "Finance & Economics",
-        b: "Portfolio construction, risk limits, and market microstructure — implemented in code, not just described in an essay.",
+        b: "Portfolio construction, risk limits, and market microstructure become working parts of the product.",
       },
       {
         t: "Computer Science & AI",
-        b: "A tool-using LLM agent with memory, feedback loops, and a deterministic guardrail layer — the architecture serious AI products use.",
+        b: "The AI uses market tools, remembers feedback, and works inside a separate rules-based risk layer.",
       },
       {
         t: "Data Science & Math",
-        b: "Indicators, screeners, evaluation loops, and a live data pipeline from market APIs to decisions.",
+        b: "Indicators, screeners, evaluation, and a live data pipeline carry market information into each report.",
       },
     ],
-    ctaTitle: "Try it with simulated money. Keep the lessons.",
+    ctaTitle: "Try the full workflow with $100k in paper funds.",
     ctaBody: "No signup. Your changes stay private and clear automatically after 24 hours.",
     footerDisclaimer:
       "A past Lantr student project, hosted by Lantr for demonstration. Simulated paper trading only. No real money. Not financial advice.",
@@ -122,9 +122,9 @@ const COPY = {
     openApp: "互动体验",
     openDash: "打开投资工作台",
     badge: "Lantr 往届学生作品 · 模拟交易，不涉及真实资金",
-    h1: "让 AI 帮你研究市场，买不买仍由你决定。",
+    h1: "给 AI 一份模拟投资组合，看看它会怎样做研究。",
     subLead: "告诉它你平时怎么投资，",
-    subEm: "它会按你的偏好查看实时行情",
+    subEm: "它会按你的偏好研究实时行情",
     subRest:
       "、整理交易建议。每一笔订单都会先经过风控规则检查，只有你确认后才会进入模拟账户。",
     ctaPrimary: "开始专属演示",
@@ -136,19 +136,19 @@ const COPY = {
     ],
     frameCaption: "学生完成的产品界面：行情研究、持仓管理和模拟交易都集中在同一个工作台。",
     featuresKicker: "学生做了什么",
-    featuresTitle: "从了解投资习惯，到提出交易建议，整个流程都做进了产品里。",
+    featuresTitle: "它会做研究，也会等你确认。",
     features: [
       {
         t: "先了解你怎么投资",
-        b: "用自己的话说明偏好，例如更看重稳健、关注哪些行业、能接受多大波动。产品会把这些信息整理成投资偏好和风控要求。",
+        b: "你可以用自己的话说明偏好，例如更看重稳健、关注哪些行业、能接受多大波动。产品会把这些信息整理成一份可以随时修改的投资档案。",
       },
       {
         t: "看过行情，再给建议",
         b: "产品会查看实时价格、涨跌、技术指标和新闻，再给出配置建议和不超过五笔的模拟订单，并说明为什么这样判断。",
       },
       {
-        t: "风险交给规则检查",
-        b: "仓位上限、单笔金额、最低现金比例和低价股限制都写成明确规则。只要不符合要求，建议就不会进入下一步。",
+        t: "风险规则逐项检查",
+        b: "仓位上限、单笔金额、最低现金比例和低价股限制都写成明确规则。超出范围的建议会在进入订单页面前被拦下。",
       },
       {
         t: "每笔交易都由你确认",
@@ -164,7 +164,7 @@ const COPY = {
       },
     ],
     howKicker: "实际怎么用",
-    howTitle: "从说明偏好到模拟下单，只需四步。",
+    howTitle: "设好投资偏好，再逐笔查看建议。",
     how: [
       {
         t: "直接进入专属演示",
@@ -184,14 +184,14 @@ const COPY = {
       },
     ],
     hoodKicker: "作品是怎么完成的",
-    hoodTitle: "从第一版网页，一步步做到可以使用。",
+    hoodTitle: "学生先做出第一版，再逐项补上完整功能。",
     hoodBody:
-      "这是一位 Lantr 往届学生完成的项目。学生先做出可以操作的第一版，再逐步加入行情查询、AI 研究、风控规则、用户账户和定时任务。课程结束后，Lantr 继续托管这件作品，供访客体验。",
+      "这位 Lantr 往届学生最先完成了一页可以操作的模拟投资组合。接下来，行情查询、AI 研究、风控规则、用户账户和定时任务陆续加入。课程结束后，Lantr 继续托管这件作品，供访客体验。",
     hoodLink: "在 GitHub 阅读源码",
     whoKicker: "学生为什么选择这个题目",
-    whoTitle: "把对金融市场的兴趣，做成一件能实际操作的作品。",
+    whoTitle: "这个项目来自学生对金融市场和 AI 的兴趣。",
     whoBody:
-      "学生从自己对金融市场的兴趣出发，没有只做一份分析报告，而是把研究、风控和模拟交易写成了一套可以实际操作的软件。",
+      "为了弄清市场研究、软件和人的判断可以怎样配合，学生把研究、风控和模拟交易放进了一套可以实际操作的软件。",
     who: [
       {
         t: "金融与经济",
@@ -199,7 +199,7 @@ const COPY = {
       },
       {
         t: "计算机与人工智能",
-        b: "把会查数据、会使用工具的 AI，和普通软件中的明确规则结合起来。",
+        b: "让 AI 查询市场数据、使用研究工具，同时由普通软件规则负责风险检查。",
       },
       {
         t: "数据科学与数学",
